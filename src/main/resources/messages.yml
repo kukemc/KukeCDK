@@ -12,7 +12,6 @@ help-export: "/cdk export - 导出 CDK 配置和日志"
 help-help: "/cdk help - 显示此帮助信息"
 
 # 命令用法
-create-command-usage: "用法: /cdk create single <id> <数量> \"<命令1|命令2|...>\" [有效时间]"
 create-command-usage-single: "用法: /cdk create single <id> <数量> \"<命令1|命令2|...>\" [有效时间]"
 create-command-usage-multiple: "用法: /cdk create multiple <name|random> <id> <数量> \"<命令1|命令2|...>\" [有效时间]"
 create-command-example-single: "示例: /cdk create single 兑换1钻石 5 \"give %player% diamond 1\" 2024-12-01 10:00"
