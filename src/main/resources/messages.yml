@@ -1,0 +1,64 @@
+# 帮助信息
+help-header: "§aKukeCDK 插件帮助:"
+help-create-single: "/cdk create single <id> <数量> \"<命令1|命令2|...>\" [有效时间]"
+help-create-multiple: "/cdk create multiple <name|random> <id> <数量> \"<命令1|命令2|...>\" [有效时间]"
+help-add: "/cdk add <id> <数量> - 批量生成/添加使用次数"
+help-delete-cdk: "/cdk delete cdk <CDK名称> - 删除 CDK"
+help-delete-id: "/cdk delete id <id> - 删除此 id 下的所有 CDK"
+help-list: "/cdk list - 查看所有 CDK"
+help-use: "/cdk use <CDK名称> - 使用 CDK"
+help-reload: "/cdk reload - 重新加载 CDK 配置"
+help-export: "/cdk export - 导出 CDK 配置和日志"
+help-help: "/cdk help - 显示此帮助信息"
+
+# 命令用法
+create-command-usage: "用法: /cdk create single <id> <数量> \"<命令1|命令2|...>\" [有效时间]"
+create-command-usage-single: "用法: /cdk create single <id> <数量> \"<命令1|命令2|...>\" [有效时间]"
+create-command-usage-multiple: "用法: /cdk create multiple <name|random> <id> <数量> \"<命令1|命令2|...>\" [有效时间]"
+create-command-example-single: "示例: /cdk create single 兑换1钻石 5 \"give %player% diamond 1\" 2024-12-01 10:00"
+create-command-example-multiple: "示例: /cdk create multiple vip666 兑换10钻石 999 \"give %player% diamond 10\" 2024-12-01 10:00"
+
+# 成功消息
+create-single-success: "成功创建 {0} 个一次性 CDK。"
+create-multiple-success: "多次使用 CDK 创建成功: {0}"
+
+# 错误消息
+invalid-cdk-type: "无效的 CDK 类型！请使用 'single' 或 'multiple'。"
+invalid-number: "数量必须是一个有效的数字！"
+add-not-found: "未找到对应的 CDK。"
+use-invalid: "无效的 CDK。"
+use-expired: "此 CDK 已过期。"
+use-already-redeemed: "您已经兑换过此 CDK。"
+permission-denied: "你没有权限执行此命令！"
+permission-denied-use: "你没有权限使用此 CDK！"
+unknown-command: "未知命令！使用 /cdk help 查看命令列表。"
+player-only: "只有玩家可以使用此命令！"
+log-save-error: "保存日志文件时出错！"
+
+# 删除相关消息
+delete-usage: "用法: /cdk delete id <ID> 或 /cdk delete cdk <CDK名称>"
+delete-id-success: "成功删除 ID: {0} 及其所有 CDK"
+delete-id-not-found: "未找到 ID: {0}"
+delete-cdk-success: "成功删除 CDK: {0}"
+delete-cdk-not-found: "未找到 CDK: {0}"
+delete-unknown-type: "未知的删除类型: {0}"
+
+# 添加相关消息
+add-usage: "用法: /cdk add <id> <数量>"
+add-uses-success: "成功添加 {0} 次使用次数到 CDK: {1}"
+
+# 导出相关消息
+export-success: "CDK 列表已成功导出到 {0}。"
+export-error: "导出 CDK 列表时出错！请检查权限或文件系统。"
+
+# 重新加载相关消息
+reload-success: "CDK 配置已重新加载！"
+
+# 列表相关消息
+list-header: "当前可用的 CDK 列表:"
+list-empty: "当前没有可用的 CDK。"
+list-item: "- {0} (ID: {1}, 类型: {2}){3}"
+
+# 使用相关消息
+use-command-usage: "用法: /cdk use <CDK>"
+use-success: "成功使用 CDK: {0}"

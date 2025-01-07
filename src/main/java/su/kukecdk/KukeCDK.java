@@ -1,9 +1,7 @@
 package su.kukecdk;
 
 import org.bukkit.Bukkit;
-
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -17,14 +15,14 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-public final class KukeCDK extends JavaPlugin implements CommandExecutor {
-
+public class KukeCDK extends JavaPlugin {
     private FileConfiguration cdkConfig;
     private File cdkFile;
-    private final Map<String, Map<String, CDK>> cdkMap = new HashMap<>();
+    private final Map<String, CDK> cdkMap = new HashMap<>();
     private File logFile;
     private FileConfiguration logConfig;
     private FileConfiguration config;
+    private YamlConfiguration messages;
 
     @Override
     public void onEnable() {
@@ -43,12 +41,14 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         createConfig();
         loadCDKs();
         createLogFile();
+        createMessages();
 
         getCommand("cdk").setExecutor(this);
         getCommand("cdk").setTabCompleter(new CDKTabCompleter());
 
         // 定期检查过期的 CDK
         Bukkit.getScheduler().runTaskTimer(this, this::removeExpiredCDKs, 6000, 6000); // 每五分钟检查一次
+
     }
 
     @Override
@@ -65,6 +65,14 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         config = YamlConfiguration.loadConfiguration(configFile);
     }
 
+    private void createMessages() {
+        File messagesFile = new File(getDataFolder(), "messages.yml");
+        if (!messagesFile.exists()) {
+            saveResource("messages.yml", false);
+        }
+        messages = YamlConfiguration.loadConfiguration(messagesFile);
+    }
+
     private void loadCDKs() {
         cdkFile = new File(getDataFolder(), "cdk.yml");
         if (!cdkFile.exists()) {
@@ -78,44 +86,39 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
 
         cdkMap.clear();
         for (String id : cdkConfig.getKeys(false)) {
-            cdkConfig.getConfigurationSection(id).getKeys(false).forEach(cdkName -> {
-                String name = cdkConfig.getString(id + "." + cdkName + ".name");
-                int quantity = cdkConfig.getInt(id + "." + cdkName + ".quantity");
-                boolean isSingleUse = cdkConfig.getBoolean(id + "." + cdkName + ".single");
-                String commands = cdkConfig.getString(id + "." + cdkName + ".commands");
-                Date expirationDate = null;
+            String name = cdkConfig.getString(id + ".name");
+            int quantity = cdkConfig.getInt(id + ".quantity");
+            boolean isSingleUse = cdkConfig.getBoolean(id + ".single");
+            String commands = cdkConfig.getString(id + ".commands");
+            Date expirationDate = null;
 
-                String dateStr = cdkConfig.getString(id + "." + cdkName + ".expiration");
-                if (dateStr != null) {
-                    try {
-                        expirationDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(dateStr);
-                    } catch (ParseException e) {
-                        e.printStackTrace();
-                    }
+            String dateStr = cdkConfig.getString(id + ".expiration");
+            if (dateStr != null) {
+                try {
+                    expirationDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(dateStr);
+                } catch (ParseException e) {
+                    e.printStackTrace();
                 }
+            }
 
-                CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate);
-                cdkMap.computeIfAbsent(id, k -> new HashMap<>()).put(name, cdk);
-            });
+            CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate);
+            cdkMap.put(id, cdk);
         }
     }
 
     private void saveCDKs() {
         cdkConfig.getKeys(false).forEach(key -> cdkConfig.set(key, null)); // 清空现有内容，避免累积
-        for (Map.Entry<String, Map<String, CDK>> entry : cdkMap.entrySet()) {
-            String id = entry.getKey();
-            for (CDK cdk : entry.getValue().values()) {
-                String basePath = id + "." + cdk.name;
-                cdkConfig.set(basePath + ".name", cdk.name);
-                cdkConfig.set(basePath + ".quantity", cdk.quantity);
-                cdkConfig.set(basePath + ".single", cdk.isSingleUse);
-                cdkConfig.set(basePath + ".commands", cdk.commands);
-                if (cdk.expirationDate != null) {
-                    cdkConfig.set(basePath + ".expiration", new SimpleDateFormat("yyyy-MM-dd HH:mm").format(cdk.expirationDate));
-                }
-                // 保存已兑换玩家列表
-                cdkConfig.set(basePath + ".redeemedPlayers", new ArrayList<>(cdk.redeemedPlayers)); // 将 Set 转换为 List
+        for (CDK cdk : cdkMap.values()) {
+            String basePath = cdk.id;
+            cdkConfig.set(basePath + ".name", cdk.name);
+            cdkConfig.set(basePath + ".quantity", cdk.quantity);
+            cdkConfig.set(basePath + ".single", cdk.isSingleUse);
+            cdkConfig.set(basePath + ".commands", cdk.commands);
+            if (cdk.expirationDate != null) {
+                cdkConfig.set(basePath + ".expiration", new SimpleDateFormat("yyyy-MM-dd HH:mm").format(cdk.expirationDate));
             }
+            // 保存已兑换玩家列表
+            cdkConfig.set(basePath + ".redeemedPlayers", new ArrayList<>(cdk.redeemedPlayers)); // 将 Set 转换为 List
         }
         try {
             cdkConfig.save(cdkFile);
@@ -168,22 +171,22 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
             case "export":
                 // 判断是否具有 admin 权限，控制台也需要有相应权限
                 if (!sender.hasPermission("kukecdk.admin." + args[0].toLowerCase())) {
-                    sender.sendMessage("你没有权限执行此命令！");
+                    sendMessageToSender(sender, "permission-denied");
                     return true;
                 }
                 break;
             case "use":
                 // /cdk use 需要 kukecdk.use 权限
                 if (player != null && !player.hasPermission("kukecdk.use")) {
-                    sendMessageToSender(sender, "你没有权限使用此 CDK！");
+                    sendMessageToSender(sender, "permission-denied-use");
                     return true;
                 } else if (player == null && !sender.hasPermission("kukecdk.use")) {
-                    sender.sendMessage("你没有权限使用此 CDK！");
+                    sendMessageToSender(sender, "permission-denied-use");
                     return true;
                 }
                 break;
             default:
-                sender.sendMessage("未知命令！使用 /cdk help 查看命令列表。");
+                sendMessageToSender(sender, "unknown-command");
                 return true;
         }
 
@@ -205,32 +208,31 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
             case "use":
                 if (!(sender instanceof Player)) {
                     // 如果不是玩家，返回提示消息并终止执行
-                    sender.sendMessage("只有玩家可以使用此命令！");
+                    sendMessageToSender(sender, "player-only");
                     return true;
                 }
                 return handleUseCommand(player, args);
             case "help":
                 return displayHelp(player != null ? player : sender);
             default:
-                sender.sendMessage("未知命令！使用 /cdk help 查看命令列表。");
+                sendMessageToSender(sender, "unknown-command");
                 return true;
         }
     }
 
     private void removeExpiredCDKs() {
-        for (Map<String, CDK> cdkGroup : cdkMap.values()) {
-            cdkGroup.values().removeIf(cdk -> cdk.expirationDate != null && new Date().after(cdk.expirationDate));
-        }
+        cdkMap.values().removeIf(cdk -> cdk.expirationDate != null && new Date().after(cdk.expirationDate));
         saveCDKs();
     }
 
     private boolean handleCreateCommand(CommandSender sender, String[] args) {
         if (args.length < 5) {
-            sendMessageToSender(sender, "用法: /cdk create single <id> <数量> \"<命令1|命令2|...>\" [有效时间]");
-            sendMessageToSender(sender, "用法: /cdk create multiple <name|random> <id> <数量> \"<命令1|命令2|...>\" [有效时间]");
+            sendMessageToSender(sender, "create-command-usage");
+            sendMessageToSender(sender, "create-command-usage-single");
+            sendMessageToSender(sender, "create-command-usage-multiple");
             sendMessageToSender(sender, "");
-            sendMessageToSender(sender, "示例: /cdk create single 兑换1钻石 5 \"give %player% diamond 1\" 2024-12-01 10:00");
-            sendMessageToSender(sender, "示例: /cdk create multiple vip666 兑换10钻石 999 \"give %player% diamond 10\" 2024-12-01 10:00");
+            sendMessageToSender(sender, "create-command-example-single");
+            sendMessageToSender(sender, "create-command-example-multiple");
             return true;
         }
 
@@ -258,7 +260,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
                 return true;
             }
         } else {
-            sendMessageToSender(sender, "无效的 CDK 类型！请使用 'single' 或 'multiple'。");
+            sendMessageToSender(sender, "invalid-cdk-type");
             return true;
         }
 
@@ -312,18 +314,18 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
             for (int i = 0; i < quantity; i++) {
                 String cdkName = generateUniqueRandomCDKName();
                 CDK cdk = new CDK(id, cdkName, 1, true, commands, expirationDate);
-                cdkMap.computeIfAbsent(id, k -> new HashMap<>()).put(cdkName, cdk);
+                cdkMap.put(cdkName, cdk);
             }
             saveCDKs();
-            sendMessageToSender(sender, "成功创建 " + quantity + " 个一次性 CDK。");
+            sendMessageToSender(sender, "create-single-success", quantity);
         } else if (type.equals("multiple")) {
             String cdkName = name.equalsIgnoreCase("random") ? generateUniqueRandomCDKName() : name;
             CDK cdk = new CDK(id, cdkName, quantity, false, commands, expirationDate);
-            cdkMap.computeIfAbsent(id, k -> new HashMap<>()).put(cdkName, cdk);
+            cdkMap.put(cdkName, cdk);
             saveCDKs();
-            sendMessageToSender(sender, "多次使用 CDK 创建成功: " + cdkName);
+            sendMessageToSender(sender, "create-multiple-success", cdkName);
     } else {
-            sendMessageToSender(sender, "无效的 CDK 类型！请使用 'single' 或 'multiple'。");
+            sendMessageToSender(sender, "invalid-cdk-type");
             return true;
         }
 
@@ -371,20 +373,20 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         String currentTime = new SimpleDateFormat("yyyy-MM-dd HH:mm").format(new Date());
 
         // 使用 toString 方法记录 CDK 使用情况和兑换时间
-        usedCDKs.add(cdk.toString() + " (兑换时间: " + currentTime + ")");
+        usedCDKs.add(cdk.toString() + " (log-time: " + currentTime + ")");
         logConfig.set(path, usedCDKs);
 
         try {
             logConfig.save(logFile);
         } catch (IOException e) {
-            getLogger().severe("保存日志文件时出错！");
+            getLogger().severe("log-save-error");
             e.printStackTrace();
         }
     }
 
     private boolean handleAddCommand(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            sendMessageToSender(sender, "用法: /cdk add <id> <数量>");
+            sendMessageToSender(sender, "add-usage");
             return true;
         }
 
@@ -394,24 +396,22 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         try {
             quantity = Integer.parseInt(args[2]);
         } catch (NumberFormatException e) {
-            sendMessageToSender(sender, "数量必须是一个有效的数字！");
+            sendMessageToSender(sender, "invalid-number");
             return true;
         }
 
-        Map<String, CDK> cdkGroup = cdkMap.get(id);
-        if (cdkGroup == null || cdkGroup.isEmpty()) {
-            sendMessageToSender(sender, "未找到对应的 CDK。");
+        CDK cdk = cdkMap.get(id);
+        if (cdk == null) {
+            sendMessageToSender(sender, "add-not-found");
             return true;
         }
-
-        CDK cdk = cdkGroup.values().iterator().next(); // 自动读取第一个 CDK
 
         if (cdk.isSingleUse) {
             // 如果是一次性CDK，批量生成新的CDK
             for (int i = 0; i < quantity; i++) {
                 String newCdkName = generateUniqueRandomCDKName();
                 CDK newCdk = new CDK(id, newCdkName, 1, true, cdk.commands, cdk.expirationDate);
-                cdkMap.computeIfAbsent(id, k -> new HashMap<>()).put(newCdkName, newCdk);
+                cdkMap.put(newCdkName, newCdk);
             }
         } else {
             // 如果是多次使用的CDK，直接增加数量
@@ -419,42 +419,32 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         }
 
         saveCDKs();
-        sendMessageToSender(sender, "成功添加 " + quantity + " 次使用次数到 CDK: " + cdk.name);
+        sendMessageToSender(sender, "add-success", quantity, cdk.name);
 
         return true;
     }
 
-
-
-
     private boolean handleUseCommand(Player player, String[] args) {
         if (args.length < 2) {
-            player.sendMessage("用法: /cdk use <CDK>");
+            sendMessageToSender(player, "use-usage");
             return true;
         }
 
         String cdkName = args[1];
-        CDK usedCDK = null;
-
-        for (Map<String, CDK> cdkGroup : cdkMap.values()) {
-            if (cdkGroup.containsKey(cdkName)) {
-                usedCDK = cdkGroup.get(cdkName);
-                break;
-            }
-        }
+        CDK usedCDK = cdkMap.get(cdkName);
 
         if (usedCDK == null) {
-            player.sendMessage("无效的 CDK。");
+            sendMessageToSender(player, "use-invalid");
             return true;
         }
 
         if (usedCDK.expirationDate != null && new Date().after(usedCDK.expirationDate)) {
-            player.sendMessage("此 CDK 已过期。");
+            sendMessageToSender(player, "use-expired");
             return true;
         }
 
         if (usedCDK.redeemedPlayers.contains(player.getName())) {
-            player.sendMessage("您已经兑换过此 CDK。");
+            sendMessageToSender(player, "use-already-redeemed");
             return true;
         }
 
@@ -468,7 +458,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         // 更新 CDK 使用信息
         usedCDK.quantity--;
         if (usedCDK.isSingleUse || usedCDK.quantity <= 0) {
-            cdkMap.get(usedCDK.id).remove(usedCDK.name);
+            cdkMap.remove(cdkName);
         }
 
         // 添加已兑换玩家
@@ -477,7 +467,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
 
         // 记录使用日志
         logCDKUsage(player.getName(), usedCDK);
-        player.sendMessage("成功使用 CDK: " + cdkName);
+        sendMessageToSender(player, "use-success", cdkName);
 
         return true;
     }
@@ -485,7 +475,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
 
     private boolean handleDeleteCommand(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            sendMessageToSender(sender, "用法: /cdk delete id <ID> 或 /cdk delete cdk <CDK名称>");
+            sendMessageToSender(sender, "delete-usage");
             return true;
         }
 
@@ -499,32 +489,28 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
                 if (cdkMap.containsKey(target)) {
                     cdkMap.remove(target);
                     saveCDKs();
-                    sendMessageToSender(sender, "成功删除 ID: " + target + " 及其所有 CDK");
+                    sendMessageToSender(sender, "delete-id-success", target);
                     found = true;
                 } else {
-                    sendMessageToSender(sender, "未找到 ID: " + target);
+                    sendMessageToSender(sender, "delete-id-not-found", target);
                 }
                 break;
 
             case "cdk":
                 // 遍历寻找并删除具体的CDK
-                for (Map.Entry<String, Map<String, CDK>> entry : cdkMap.entrySet()) {
-                    if (entry.getValue().containsKey(target)) {
-                        entry.getValue().remove(target);
-                        saveCDKs();
-                        sendMessageToSender(sender, "成功删除 CDK: " + target);
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found) {
-                    sendMessageToSender(sender, "未找到 CDK: " + target);
+                CDK cdkToDelete = cdkMap.get(target);
+                if (cdkToDelete != null) {
+                    cdkMap.remove(target);
+                    saveCDKs();
+                    sendMessageToSender(sender, "delete-cdk-success", target);
+                    found = true;
+                } else {
+                    sendMessageToSender(sender, "delete-cdk-not-found", target);
                 }
                 break;
 
             default:
-                sendMessageToSender(sender, "未知的删除类型: " + deleteType);
+                sendMessageToSender(sender, "delete-unknown-type", deleteType);
                 break;
         }
 
@@ -533,17 +519,15 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
 
     private boolean handleListCommand(CommandSender sender) {
         if (cdkMap.isEmpty()) {
-            sendMessageToSender(sender, "当前没有可用的 CDK。");
+            sendMessageToSender(sender, "list-empty");
             return true;
         }
 
-        sendMessageToSender(sender, "当前可用的 CDK 列表:");
-        for (Map<String, CDK> cdkGroup : cdkMap.values()) {
-            for (CDK cdk : cdkGroup.values()) {
-                String type = cdk.isSingleUse ? "一次性" : "多次兑换";
-                String quantityInfo = cdk.isSingleUse ? "" : " 剩余兑换次数: " + cdk.quantity;
-                sendMessageToSender(sender, "- " + cdk.name + " (ID: " + cdk.id + ", 类型: " + type + ")" + quantityInfo);
-            }
+        sendMessageToSender(sender, "list-header");
+        for (CDK cdk : cdkMap.values()) {
+            String type = cdk.isSingleUse ? "single" : "multiple";
+            String quantityInfo = cdk.isSingleUse ? "" : " list-quantity: " + cdk.quantity;
+            sendMessageToSender(sender, "list-item", cdk.name, cdk.id, type, quantityInfo);
         }
 
         return true;
@@ -551,29 +535,32 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
 
 
     private boolean handleReloadCommand(CommandSender sender) {
-        // 重新加载配置文件
+          // 重新加载配置文件
         reloadConfig();
         config = getConfig(); // 更新 config 变量的引用
+
+        // 重新加载 messages.yml 文件
+        File messagesFile = new File(getDataFolder(), "messages.yml");
+        messages = YamlConfiguration.loadConfiguration(messagesFile);
+
         loadCDKs();
         createLogFile();
-        sendMessageToSender(sender, "CDK 配置已重新加载！");
+        sendMessageToSender(sender, "reload-success");
         return true;
     }
+
 
     private boolean handleExportCommand(CommandSender sender) {
         // 创建导出文件
         File exportFile = new File(getDataFolder(), "export.yml");
         YamlConfiguration exportConfig = YamlConfiguration.loadConfiguration(exportFile);
 
-        for (Map.Entry<String, Map<String, CDK>> entry : cdkMap.entrySet()) {
-            String id = entry.getKey();
-            Map<String, CDK> cdkGroup = entry.getValue();
+        for (CDK cdk : cdkMap.values()) {
+            String id = cdk.id;
 
             // 创建一个列表来存储 CDK 名称
             List<String> cdkList = new ArrayList<>();
-            for (CDK cdk : cdkGroup.values()) {
-                cdkList.add(cdk.name);
-            }
+            cdkList.add(cdk.name);
 
             // 将 CDK 列表保存到 exportConfig 中
             exportConfig.set(id, cdkList);
@@ -583,49 +570,65 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         try {
             exportConfig.save(exportFile);
         } catch (IOException e) {
-            sendMessageToSender(sender, "导出 CDK 列表时出错！请检查权限或文件系统。");
+            sendMessageToSender(sender, "export-error");
             e.printStackTrace();
             return true;
         }
 
-        sendMessageToSender(sender, "CDK 列表已成功导出到 " + exportFile.getName() + "。");
+        sendMessageToSender(sender, "export-success", exportFile.getName());
         return true;
     }
 
     // 修改 displayHelp 方法，使用统一的处理逻辑
     private boolean displayHelp(CommandSender sender) {
-        // 定义帮助信息内容
-        List<String> helpMessages = Arrays.asList(
-                "/cdk create single <id> <数量> \"<命令1|命令2|...>\" [有效时间]",
-                "/cdk create multiple <name|random> <id> <数量> \"<命令1|命令2|...>\" [有效时间]",
-                "/cdk add <id> <数量> - 批量生成/添加使用次数",
-                "/cdk delete cdk <CDK名称> - 删除 CDK",
-                "/cdk delete id <id> - 删除此 id 下的所有 CDK",
-                "/cdk list - 查看所有 CDK",
-                "/cdk use <CDK名称> - 使用 CDK",
-                "/cdk reload - 重新加载 CDK 配置",
-                "/cdk export - 导出 CDK 配置和日志",
-                "/cdk help - 显示此帮助信息"
-        );
-
         // 发送帮助信息给 sender
-        sendMessageToSender(sender, "§aKukeCDK 插件帮助:");
-        for (String message : helpMessages) {
-            sendMessageToSender(sender, message);
-        }
+        sendMessageToSender(sender, "help-header");
+        sendMessageToSender(sender, "help-create-single");
+        sendMessageToSender(sender, "help-create-multiple");
+        sendMessageToSender(sender, "help-add");
+        sendMessageToSender(sender, "help-delete-cdk");
+        sendMessageToSender(sender, "help-delete-id");
+        sendMessageToSender(sender, "help-list");
+        sendMessageToSender(sender, "help-use");
+        sendMessageToSender(sender, "help-reload");
+        sendMessageToSender(sender, "help-export");
+        sendMessageToSender(sender, "help-help");
 
         return true;
     }
 
     // 自动判断 sender 是玩家还是控制台，并发送消息
-    private void sendMessageToSender(CommandSender sender, String message) {
-        if (sender instanceof Player) {
-            // 如果是玩家，发送带颜色的消息
-            Player player = (Player) sender;
-            player.sendMessage(message);
-        } else {
-            // 如果是控制台，发送普通文本消息
-            sender.sendMessage(message);
+    private void sendMessageToSender(CommandSender sender, String key, Object... placeholders) {
+        if (Objects.equals(key, "")) {
+            sender.sendMessage("");
+            return;
         }
+
+        String message = messages.getString(key);
+        if (message != null) {
+            for (int i = 0; i < placeholders.length; i++) {
+                message = message.replace("{" + i + "}", placeholders[i].toString());
+            }
+            sender.sendMessage(message);
+        } else {
+            sender.sendMessage("Message key not found: " + key);
+        }
+    }
+    public void addUsesToCDK(CommandSender sender, CDK cdk, int quantity) {
+        if (cdk.isSingleUse) {
+            // 如果是一次性CDK，批量生成新的CDK
+            for (int i = 0; i < quantity; i++) {
+                String newCdkName = generateUniqueRandomCDKName();
+                CDK newCdk = new CDK(cdk.id, newCdkName, 1, true, cdk.commands, cdk.expirationDate);
+                cdkMap.put(newCdkName, newCdk);
+            }
+        } else {
+            // 如果是多次使用的CDK，直接增加数量
+            cdk.quantity += quantity;
+            cdkMap.put(cdk.name, cdk); // 确保更新后的 CDK 被保存回 cdkMap
+        }
+
+        saveCDKs();
+        sendMessageToSender(sender, "add-uses-success", quantity, cdk.name);
     }
 }
