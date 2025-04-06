@@ -1,0 +1,30 @@
+name: KukeCDK
+version: '${version}'
+main: su.kukecdk.KukeCDK
+commands:
+  cdk:
+    description: CDK 指令管理
+    usage: /cdk <命令>
+    aliases: []
+permissions:
+  kukecdk.use:
+    description: 允许玩家使用 CDK
+    default: true
+  kukecdk.admin.create:
+    description: 允许玩家创建 CDK
+    default: op
+  kukecdk.admin.add:
+    description: 允许玩家添加 CDK
+    default: op
+  kukecdk.admin.delete:
+    description: 允许玩家删除 CDK
+    default: op
+  kukecdk.admin.list:
+    description: 允许玩家查看 CDK 列表
+    default: op
+  kukecdk.admin.reload:
+    description: 允许玩家重新加载 CDK 配置
+    default: op
+  kukecdk.admin.export:
+    description: 允许玩家导出 CDK 配置
+    default: op

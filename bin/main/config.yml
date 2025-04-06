@@ -1,0 +1,10 @@
+# KukeCDK 插件配置文件
+
+# 插件版本(请勿修改)
+plugin_version: "1.0"
+
+# 默认生成的 CDK 字符库
+default_cdk_characters: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+# 默认生成的 CDK 名称长度
+default_cdk_name_length: 8
