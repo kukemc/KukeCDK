@@ -8,6 +8,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import su.kukecdk.command.CDKCommandHandler;
 import su.kukecdk.manager.CDKManager;
 import su.kukecdk.manager.ConfigManager;
+import su.kukecdk.manager.LanguageManager;
 import su.kukecdk.manager.LogManager;
 import su.kukecdk.metrics.Metrics;
 
@@ -19,6 +20,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
     private ConfigManager configManager;
     private CDKManager cdkManager;
     private LogManager logManager;
+    private LanguageManager languageManager;
     private CDKCommandHandler commandHandler;
 
     @Override
@@ -41,7 +43,8 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         configManager = new ConfigManager(this);
         cdkManager = new CDKManager(this, configManager.getConfig());
         logManager = new LogManager(this);
-        commandHandler = new CDKCommandHandler(cdkManager, logManager, getDataFolder());
+        languageManager = new LanguageManager(this, configManager);
+        commandHandler = new CDKCommandHandler(cdkManager, logManager, languageManager, getDataFolder());
 
         // 注册命令和Tab补全
         getCommand("cdk").setExecutor(this);
@@ -60,6 +63,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         if (logManager != null) {
             logManager.saveLog();
         }
+        getLogger().info("KukeCDK 已卸载");
     }
 
     @Override
@@ -79,19 +83,19 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
             case "export":
                 // 检查管理员权限
                 if (!sender.hasPermission("kukecdk.admin." + args[0].toLowerCase())) {
-                    sender.sendMessage("你没有权限执行此命令！");
+                    sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("no_permission"));
                     return true;
                 }
                 break;
             case "use":
                 // 检查使用权限
                 if (!sender.hasPermission("kukecdk.use")) {
-                    sender.sendMessage("你没有权限使用此 CDK！");
+                    sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("no_permission_use"));
                     return true;
                 }
                 break;
             default:
-                sender.sendMessage("未知命令！使用 /cdk help 查看命令列表。");
+                sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("unknown_command"));
                 return true;
         }
 
@@ -114,7 +118,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
             case "help":
                 return commandHandler.displayHelp(sender);
             default:
-                sender.sendMessage("未知命令！使用 /cdk help 查看命令列表。");
+                sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("unknown_command"));
                 return true;
         }
     }

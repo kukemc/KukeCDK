@@ -1,0 +1,66 @@
+# KukeCDK English language file (en_US)
+
+# General messages
+prefix: "&7[&bKukeCDK&7] &r"
+no_permission: "&cYou don't have permission to execute this command!"
+unknown_command: "&cUnknown command! Use /cdk help to see the command list."
+no_permission_use: "&cYou don't have permission to use this CDK!"
+
+# Help information
+help_header: "&6===== &e&lKukeCDK Help &6=====&r"
+help_create: "&b/cdk create single <id> <quantity> \"<command1|command2|...>\" [expiration] &7- Create a one-time CDK"
+help_create_multiple: "&b/cdk create multiple <name|random> <id> <quantity> \"<command1|command2|...>\" [expiration] &7-Create a reusable CDK"
+help_add: "&b/cdk add <id> <quantity> &7- Batch generate/increase the number of uses"
+help_delete: "&b/cdk delete <cdk|id> <content> &7- Delete CDK/Delete all CDKs under this id and id"
+help_list: "&b/cdk list &7- List all CDKs"
+help_reload: "&b/cdk reload &7- Reload configuration and language files"
+help_export: "&b/cdk export &7- Export all CDKs"
+help_use: "&b/cdk use <CDK> &7- Use a CDK"
+help_footer: "&6========================="
+
+# Create CDK related messages
+create_usage_single: "Usage: /cdk create single <id> <quantity> \"<command1|command2|...>\" [expiration]"
+create_usage_multiple: "Usage: /cdk create multiple <name|random> <id> <quantity> \"<command1|command2|...>\" [expiration]"
+create_example_single: "Example: /cdk create single diamond1 5 \"give %player% diamond 1\" 2024-12-01 10:00"
+create_example_multiple: "Example: /cdk create multiple vip666 diamond10 999 \"give %player% diamond 10\" 2024-12-01 10:00"
+invalid_quantity: "&cQuantity must be a valid number!"
+invalid_cdk_type: "&cInvalid CDK type! Please use 'single' or 'multiple'."
+invalid_date_format: "&cInvalid date format! Please use yyyy-MM-dd HH:mm format."
+create_success_single: "&aSuccessfully created one-time CDK, quantity: &e%quantity%&a, ID: &e%id%"
+create_success_multiple: "&aSuccessfully created multi-use CDK, name: %cdk%, usage count: &e%quantity%&a, ID: &e%id%"
+
+# Add CDK related messages
+add_usage: "Usage: /cdk add <CDK> <id> \"<command1|command2|...>\" [expiration]"
+add_example: "Example: /cdk add ABC123 diamond \"give %player% diamond 1\" 2024-12-01 10:00"
+add_success: "&aSuccessfully added CDK, ID: &e%id%&a, Quantity: &e%quantity%"
+cdk_already_exists: "&cCDK &e%cdk% &calready exists!"
+
+# Delete CDK related messages
+delete_usage: "Usage: /cdk delete <cdk|id> <content>"
+delete_success: "&aSuccessfully deleted CDK: &e%cdk%"
+cdk_not_found: "&cCDK &e%cdk% &cdoes not exist!"
+
+# List related messages
+list_header: "&6===== &bCDK List &6=====&r"
+list_item: "&b%cdk% &7- &a%id% &7- &e%commands% &7- &c%expiration%"
+list_footer: "&6===================="
+list_empty: "&cThere are no CDKs currently!"
+
+# Reload related messages
+reload_success: "&aSuccessfully reloaded configuration and language files!"
+
+# Export related messages
+export_success: "&aSuccessfully exported all CDKs to &e%file%&a!"
+export_failed: "&cError exporting CDKs!"
+
+# Use CDK related messages
+use_usage: "Usage: /cdk use <CDK>"
+use_player_only: "&cOnly players can use CDKs!"
+use_success: "&aSuccessfully used CDK: &e%cdk%&a!"
+cdk_expired: "&cCDK &e%cdk% &chas expired!"
+cdk_already_used: "&cYou have already used this CDK!"
+
+# Other messages
+save_config_error: "&cError saving configuration file!"
+save_cdk_error: "&cError saving CDK data!"
+save_log_error: "&cError saving log data!"

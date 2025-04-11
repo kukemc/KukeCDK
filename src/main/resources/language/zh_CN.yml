@@ -1,0 +1,66 @@
+# KukeCDK 中文语言文件 (zh_CN)
+
+# 通用消息
+prefix: "&7[&bKukeCDK&7] &r"
+no_permission: "&c你没有权限执行此命令！"
+unknown_command: "&c未知命令！使用 /cdk help 查看命令列表。"
+no_permission_use: "&c你没有权限使用此 CDK！"
+
+# 帮助信息
+help_header: "&6===== &e&lKukeCDK 帮助 &6=====&r"
+help_create: "&b/cdk create single <id> <数量> \"<命令1|命令2|...>\" [有效时间] &7- 创建一次性CDK"
+help_create_multiple: "&b/cdk create multiple <name|random> <id> <数量> \"<命令1|命令2|...>\" [有效时间] &7- 创建可多次使用CDK"
+help_add: "&b/cdk add <id> <数量> &7- 批量生成/增加可使用次数"
+help_delete: "&b/cdk delete <cdk|id> <内容> &7- 删除CDK/删除此id和id下的所有CDK"
+help_list: "&b/cdk list &7- 列出所有CDK"
+help_reload: "&b/cdk reload &7- 重新加载配置和语言文件"
+help_export: "&b/cdk export &7- 导出所有CDK"
+help_use: "&b/cdk use <CDK> &7- 使用一个CDK"
+help_footer: "&6========================="
+
+# 创建CDK相关消息
+create_usage_single: "用法: /cdk create single <id> <数量> \"<命令1|命令2|...>\" [有效时间]"
+create_usage_multiple: "用法: /cdk create multiple <name|random> <id> <数量> \"<命令1|命令2|...>\" [有效时间]"
+create_example_single: "示例: /cdk create single 兑换1钻石 5 \"give %player% diamond 1\" 2024-12-01 10:00"
+create_example_multiple: "示例: /cdk create multiple vip666 兑换10钻石 999 \"give %player% diamond 10\" 2024-12-01 10:00"
+invalid_quantity: "&c数量必须是一个有效的数字！"
+invalid_cdk_type: "&c无效的 CDK 类型！请使用 'single' 或 'multiple'。"
+invalid_date_format: "&c无效的日期格式！请使用 yyyy-MM-dd HH:mm 格式。"
+create_success_single: "&a成功创建一次性CDK，数量: &e%quantity%&a，ID: &e%id%"
+create_success_multiple: "&a成功创建多次使用CDK，名称: %cdk%，使用次数: &e%quantity%&a，ID: &e%id%"
+
+# 添加CDK相关消息
+add_usage: "用法: /cdk add <CDK> <id> \"<命令1|命令2|...>\" [有效时间]"
+add_example: "示例: /cdk add ABC123 兑换钻石 \"give %player% diamond 1\" 2024-12-01 10:00"
+add_success: "&a成功添加了CDK，ID: &e%id%&a，数量：&e%quantity%"
+cdk_already_exists: "&cCDK &e%cdk% &c已经存在！"
+
+# 删除CDK相关消息
+delete_usage: "用法: /cdk delete <cdk|id> <内容>"
+delete_success: "&a成功删除了 CDK: &e%cdk%"
+cdk_not_found: "&cCDK &e%cdk% &c不存在！"
+
+# 列表相关消息
+list_header: "&6===== &bCDK 列表 &6=====&r"
+list_item: "&b%cdk% &7- &a%id% &7- &e%commands% &7- &c%expiration%"
+list_footer: "&6===================="
+list_empty: "&c当前没有任何 CDK！"
+
+# 重载相关消息
+reload_success: "&a成功重新加载配置和语言文件！"
+
+# 导出相关消息
+export_success: "&a成功导出所有 CDK 到 &e%file%&a！"
+export_failed: "&c导出 CDK 时出错！"
+
+# 使用CDK相关消息
+use_usage: "用法: /cdk use <CDK>"
+use_player_only: "&c只有玩家可以使用 CDK！"
+use_success: "&a成功使用了 CDK: &e%cdk%&a！"
+cdk_expired: "&cCDK &e%cdk% &c已过期！"
+cdk_already_used: "&c你已经使用过这个 CDK 了！"
+
+# 其他消息
+save_config_error: "&c保存配置文件时出错！"
+save_cdk_error: "&c保存 CDK 数据时出错！"
+save_log_error: "&c保存日志数据时出错！"

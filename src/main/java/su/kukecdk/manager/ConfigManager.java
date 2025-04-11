@@ -3,6 +3,7 @@ package su.kukecdk.manager;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+import su.kukecdk.utils.ConfigMerger;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,6 +15,7 @@ public class ConfigManager {
     private final JavaPlugin plugin;
     private FileConfiguration config;
     private File configFile;
+    private final ConfigMerger configMerger;
 
     /**
      * 创建一个新的配置管理器
@@ -22,6 +24,7 @@ public class ConfigManager {
      */
     public ConfigManager(JavaPlugin plugin) {
         this.plugin = plugin;
+        this.configMerger = new ConfigMerger(plugin);
         createConfig();
     }
 
@@ -34,6 +37,9 @@ public class ConfigManager {
             plugin.saveResource("config.yml", false);
         }
         config = YamlConfiguration.loadConfiguration(configFile);
+        
+        // 检查并自动补全缺失的配置项
+        configMerger.mergeConfig(config, "config.yml", configFile);
     }
 
     /**

@@ -5,6 +5,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import su.kukecdk.manager.CDKManager;
+import su.kukecdk.manager.LanguageManager;
 import su.kukecdk.manager.LogManager;
 import su.kukecdk.model.CDK;
 
@@ -24,6 +25,7 @@ import java.util.Map;
 public class CDKCommandHandler {
     private final CDKManager cdkManager;
     private final LogManager logManager;
+    private final LanguageManager languageManager;
     private final File dataFolder;
 
     /**
@@ -31,11 +33,13 @@ public class CDKCommandHandler {
      *
      * @param cdkManager CDK管理器
      * @param logManager 日志管理器
+     * @param languageManager 语言管理器
      * @param dataFolder 插件数据文件夹
      */
-    public CDKCommandHandler(CDKManager cdkManager, LogManager logManager, File dataFolder) {
+    public CDKCommandHandler(CDKManager cdkManager, LogManager logManager, LanguageManager languageManager, File dataFolder) {
         this.cdkManager = cdkManager;
         this.logManager = logManager;
+        this.languageManager = languageManager;
         this.dataFolder = dataFolder;
     }
 
@@ -48,11 +52,11 @@ public class CDKCommandHandler {
      */
     public boolean handleCreateCommand(CommandSender sender, String[] args) {
         if (args.length < 5) {
-            sendMessageToSender(sender, "用法: /cdk create single <id> <数量> \"<命令1|命令2|...>\" [有效时间]");
-            sendMessageToSender(sender, "用法: /cdk create multiple <name|random> <id> <数量> \"<命令1|命令2|...>\" [有效时间]");
+            sendMessageToSender(sender, languageManager.getMessage("create_usage_single"));
+            sendMessageToSender(sender, languageManager.getMessage("create_usage_multiple"));
             sendMessageToSender(sender, "");
-            sendMessageToSender(sender, "示例: /cdk create single 兑换1钻石 5 \"give %player% diamond 1\" 2024-12-01 10:00");
-            sendMessageToSender(sender, "示例: /cdk create multiple vip666 兑换10钻石 999 \"give %player% diamond 10\" 2024-12-01 10:00");
+            sendMessageToSender(sender, languageManager.getMessage("create_example_single"));
+            sendMessageToSender(sender, languageManager.getMessage("create_example_multiple"));
             return true;
         }
 
@@ -67,7 +71,7 @@ public class CDKCommandHandler {
             try {
                 quantity = Integer.parseInt(args[3]);
             } catch (NumberFormatException e) {
-                sendMessageToSender(sender, "数量必须是一个有效的数字！");
+                sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("invalid_quantity"));
                 return true;
             }
         } else if (type.equals("multiple")) {
@@ -76,11 +80,11 @@ public class CDKCommandHandler {
             try {
                 quantity = Integer.parseInt(args[4]); // 第四个参数是数量
             } catch (NumberFormatException e) {
-                sendMessageToSender(sender, "数量必须是一个有效的数字！");
+                sendMessageToSender(sender, languageManager.getMessage("invalid_quantity"));
                 return true;
             }
         } else {
-            sendMessageToSender(sender, "无效的 CDK 类型！请使用 'single' 或 'multiple'。");
+            sendMessageToSender(sender, languageManager.getMessage("invalid_cdk_type"));
             return true;
         }
 
@@ -115,7 +119,7 @@ public class CDKCommandHandler {
         String commands = commandBuilder.toString().trim();
 
         if (commands.isEmpty()) {
-            sendMessageToSender(sender, "命令参数不能为空！");
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + "命令参数不能为空！");
             return true;
         }
 
@@ -124,7 +128,7 @@ public class CDKCommandHandler {
         if (expirationDateString != null) {
             expirationDate = parseDate(expirationDateString);
             if (expirationDate == null) {
-                sendMessageToSender(sender, "无效的时间格式，请使用 yyyy-MM-dd HH:mm 格式。");
+                sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("invalid_date_format"));
                 return true;
             }
         }
@@ -135,13 +139,13 @@ public class CDKCommandHandler {
                 String cdkName = cdkManager.generateUniqueRandomCDKName();
                 cdkManager.createCDK(id, cdkName, 1, true, commands, expirationDate);
             }
-            sendMessageToSender(sender, "成功创建 " + quantity + " 个一次性 CDK。");
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("create_success_single", "%quantity%", String.valueOf(quantity), "%id%", id));
         } else if (type.equals("multiple")) {
             String cdkName = name.equalsIgnoreCase("random") ? cdkManager.generateUniqueRandomCDKName() : name;
             cdkManager.createCDK(id, cdkName, quantity, false, commands, expirationDate);
-            sendMessageToSender(sender, "多次使用 CDK 创建成功: " + cdkName);
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("create_success_multiple", "%quantity%", String.valueOf(quantity), "%id%", id));
         } else {
-            sendMessageToSender(sender, "无效的 CDK 类型！请使用 'single' 或 'multiple'。");
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("invalid_cdk_type"));
             return true;
         }
 
@@ -157,7 +161,7 @@ public class CDKCommandHandler {
      */
     public boolean handleAddCommand(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            sendMessageToSender(sender, "用法: /cdk add <id> <数量>");
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("add_usage"));
             return true;
         }
 
@@ -167,13 +171,13 @@ public class CDKCommandHandler {
         try {
             quantity = Integer.parseInt(args[2]);
         } catch (NumberFormatException e) {
-            sendMessageToSender(sender, "数量必须是一个有效的数字！");
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("invalid_quantity"));
             return true;
         }
 
         Map<String, CDK> cdkGroup = cdkManager.findCDKGroupById(id);
         if (cdkGroup == null || cdkGroup.isEmpty()) {
-            sendMessageToSender(sender, "未找到对应的 CDK。");
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + "未找到对应的 CDK。");
             return true;
         }
 
@@ -191,7 +195,7 @@ public class CDKCommandHandler {
         }
 
         cdkManager.saveCDKs();
-        sendMessageToSender(sender, "成功添加 " + quantity + " 次使用次数到 CDK: " + cdk.getName());
+        sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("add_success", "%cdk%", cdk.getName(), "%id%", id, "%quantity%", String.valueOf(quantity)));
 
         return true;
     }
@@ -206,14 +210,14 @@ public class CDKCommandHandler {
     public boolean handleUseCommand(CommandSender sender, String[] args) {
         // 检查发送者是否为玩家
         if (!(sender instanceof Player)) {
-            sender.sendMessage("此命令只能由玩家执行！");
+            sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("use_player_only"));
             return true;
         }
         
         Player player = (Player) sender;
         
         if (args.length < 2) {
-            player.sendMessage("用法: /cdk use <CDK>");
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("use_usage"));
             return true;
         }
 
@@ -221,17 +225,17 @@ public class CDKCommandHandler {
         CDK usedCDK = cdkManager.findCDKByName(cdkName);
 
         if (usedCDK == null) {
-            player.sendMessage("无效的 CDK。");
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("cdk_not_found", "%cdk%", cdkName));
             return true;
         }
 
         if (usedCDK.isExpired()) {
-            player.sendMessage("此 CDK 已过期。");
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("cdk_expired", "%cdk%", cdkName));
             return true;
         }
 
         if (usedCDK.hasPlayerRedeemed(player.getName())) {
-            player.sendMessage("您已经兑换过此 CDK。");
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("cdk_already_used"));
             return true;
         }
 
@@ -254,7 +258,7 @@ public class CDKCommandHandler {
 
         // 记录使用日志
         logManager.logCDKUsage(player.getName(), usedCDK);
-        player.sendMessage("成功使用 CDK: " + cdkName);
+        player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("use_success", "%cdk%", cdkName));
 
         return true;
     }
@@ -268,7 +272,7 @@ public class CDKCommandHandler {
      */
     public boolean handleDeleteCommand(CommandSender sender, String[] args) {
         if (args.length < 3) {
-            sendMessageToSender(sender, "用法: /cdk delete id <ID> 或 /cdk delete cdk <CDK名称>");
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("delete_usage"));
             return true;
         }
 
@@ -281,9 +285,9 @@ public class CDKCommandHandler {
                 // 删除整个ID及其下的所有CDK
                 found = cdkManager.deleteById(target);
                 if (found) {
-                    sendMessageToSender(sender, "成功删除 ID: " + target + " 及其所有 CDK");
+                    sendMessageToSender(sender, languageManager.getMessage("prefix") + "成功删除 ID: " + target + " 及其所有 CDK");
                 } else {
-                    sendMessageToSender(sender, "未找到 ID: " + target);
+                    sendMessageToSender(sender, languageManager.getMessage("prefix") + "未找到 ID: " + target);
                 }
                 break;
 
@@ -291,14 +295,14 @@ public class CDKCommandHandler {
                 // 删除具体的CDK
                 found = cdkManager.deleteByCDKName(target);
                 if (found) {
-                    sendMessageToSender(sender, "成功删除 CDK: " + target);
+                    sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("delete_success", "%cdk%", target));
                 } else {
-                    sendMessageToSender(sender, "未找到 CDK: " + target);
+                    sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("cdk_not_found", "%cdk%", target));
                 }
                 break;
 
             default:
-                sendMessageToSender(sender, "未知的删除类型: " + deleteType);
+                sendMessageToSender(sender, languageManager.getMessage("prefix") + "未知的删除类型: " + deleteType);
                 break;
         }
 
@@ -314,11 +318,11 @@ public class CDKCommandHandler {
     public boolean handleListCommand(CommandSender sender) {
         Map<String, Map<String, CDK>> allCDKs = cdkManager.getAllCDKs();
         if (allCDKs.isEmpty()) {
-            sendMessageToSender(sender, "当前没有可用的 CDK。");
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("list_empty"));
             return true;
         }
 
-        sendMessageToSender(sender, "当前可用的 CDK 列表:");
+        sendMessageToSender(sender, languageManager.getMessage("list_header"));
         for (Map<String, CDK> cdkGroup : allCDKs.values()) {
             for (CDK cdk : cdkGroup.values()) {
                 String type = cdk.isSingleUse() ? "一次性" : "多次兑换";
@@ -338,7 +342,9 @@ public class CDKCommandHandler {
      */
     public boolean handleReloadCommand(CommandSender sender) {
         cdkManager.loadCDKs();
-        sendMessageToSender(sender, "CDK 配置已重新加载！");
+        // 重新加载语言文件
+        languageManager.loadLanguage();
+        sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("reload_success"));
         return true;
     }
 
@@ -372,12 +378,12 @@ public class CDKCommandHandler {
         try {
             exportConfig.save(exportFile);
         } catch (IOException e) {
-            sendMessageToSender(sender, "导出 CDK 列表时出错！请检查权限或文件系统。");
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("export_failed"));
             e.printStackTrace();
             return true;
         }
 
-        sendMessageToSender(sender, "CDK 列表已成功导出到 " + exportFile.getName() + "。");
+        sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("export_success", "%file%", exportFile.getName()));
         return true;
     }
 
@@ -388,25 +394,17 @@ public class CDKCommandHandler {
      * @return 命令执行结果
      */
     public boolean displayHelp(CommandSender sender) {
-        // 定义帮助信息内容
-        List<String> helpMessages = Arrays.asList(
-                "/cdk create single <id> <数量> \"<命令1|命令2|...>\" [有效时间]",
-                "/cdk create multiple <name|random> <id> <数量> \"<命令1|命令2|...>\" [有效时间]",
-                "/cdk add <id> <数量> - 批量生成/添加使用次数",
-                "/cdk delete cdk <CDK名称> - 删除 CDK",
-                "/cdk delete id <id> - 删除此 id 下的所有 CDK",
-                "/cdk list - 查看所有 CDK",
-                "/cdk use <CDK名称> - 使用 CDK",
-                "/cdk reload - 重新加载 CDK 配置",
-                "/cdk export - 导出 CDK 配置和日志",
-                "/cdk help - 显示此帮助信息"
-        );
-
         // 发送帮助信息给 sender
-        sendMessageToSender(sender, "§aKukeCDK 插件帮助:");
-        for (String message : helpMessages) {
-            sendMessageToSender(sender, message);
-        }
+        sendMessageToSender(sender, languageManager.getMessage("help_header"));
+        sendMessageToSender(sender, languageManager.getMessage("help_create"));
+        sendMessageToSender(sender, languageManager.getMessage("help_create_multiple"));
+        sendMessageToSender(sender, languageManager.getMessage("help_add"));
+        sendMessageToSender(sender, languageManager.getMessage("help_delete"));
+        sendMessageToSender(sender, languageManager.getMessage("help_list"));
+        sendMessageToSender(sender, languageManager.getMessage("help_use"));
+        sendMessageToSender(sender, languageManager.getMessage("help_reload"));
+        sendMessageToSender(sender, languageManager.getMessage("help_export"));
+        sendMessageToSender(sender, languageManager.getMessage("help_footer"));
 
         return true;
     }
@@ -436,13 +434,7 @@ public class CDKCommandHandler {
      * @param message 消息内容
      */
     private void sendMessageToSender(CommandSender sender, String message) {
-        if (sender instanceof Player) {
-            // 如果是玩家，发送带颜色的消息
-            Player player = (Player) sender;
-            player.sendMessage(message);
-        } else {
-            // 如果是控制台，发送普通文本消息
-            sender.sendMessage(message);
-        }
+        // 直接发送消息，LanguageManager已经处理了颜色代码
+        sender.sendMessage(message);
     }
 }
