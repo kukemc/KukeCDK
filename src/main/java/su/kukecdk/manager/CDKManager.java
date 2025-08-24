@@ -20,6 +20,8 @@ public class CDKManager {
     private File cdkFile;
     private final Map<String, Map<String, CDK>> cdkMap = new HashMap<>();
     private FileConfiguration config;
+    private DatabaseManager databaseManager;
+    private String storageMode;
 
     /**
      * 创建一个新的CDK管理器
@@ -30,6 +32,13 @@ public class CDKManager {
     public CDKManager(JavaPlugin plugin, FileConfiguration config) {
         this.plugin = plugin;
         this.config = config;
+        this.storageMode = config.getString("storage_mode", "yaml");
+        
+        // 如果使用数据库模式，初始化数据库管理器
+        if ("sqlite".equalsIgnoreCase(storageMode) || "mysql".equalsIgnoreCase(storageMode)) {
+            this.databaseManager = new DatabaseManager(plugin, config, storageMode);
+        }
+        
         loadCDKs();
     }
 
@@ -37,48 +46,55 @@ public class CDKManager {
      * 加载CDK配置
      */
     public void loadCDKs() {
-        cdkFile = new File(plugin.getDataFolder(), "cdk.yml");
-        if (!cdkFile.exists()) {
-            try {
-                cdkFile.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
+        if ("sqlite".equalsIgnoreCase(storageMode) || "mysql".equalsIgnoreCase(storageMode)) {
+            // 从数据库加载
+            cdkMap.clear();
+            cdkMap.putAll(databaseManager.loadCDKs());
+        } else {
+            // 从YAML文件加载
+            cdkFile = new File(plugin.getDataFolder(), "cdk.yml");
+            if (!cdkFile.exists()) {
+                try {
+                    cdkFile.createNewFile();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
-        }
-        cdkConfig = YamlConfiguration.loadConfiguration(cdkFile);
+            cdkConfig = YamlConfiguration.loadConfiguration(cdkFile);
 
-        cdkMap.clear();
-        for (String id : cdkConfig.getKeys(false)) {
-            cdkConfig.getConfigurationSection(id).getKeys(false).forEach(cdkName -> {
-                String name = cdkConfig.getString(id + "." + cdkName + ".name");
-                int quantity = cdkConfig.getInt(id + "." + cdkName + ".quantity");
-                boolean isSingleUse = cdkConfig.getBoolean(id + "." + cdkName + ".single");
-                String commands = cdkConfig.getString(id + "." + cdkName + ".commands");
-                Date expirationDate = null;
+            cdkMap.clear();
+            for (String id : cdkConfig.getKeys(false)) {
+                cdkConfig.getConfigurationSection(id).getKeys(false).forEach(cdkName -> {
+                    String name = cdkConfig.getString(id + "." + cdkName + ".name");
+                    int quantity = cdkConfig.getInt(id + "." + cdkName + ".quantity");
+                    boolean isSingleUse = cdkConfig.getBoolean(id + "." + cdkName + ".single");
+                    String commands = cdkConfig.getString(id + "." + cdkName + ".commands");
+                    Date expirationDate = null;
 
-                String dateStr = cdkConfig.getString(id + "." + cdkName + ".expiration");
-                if (dateStr != null) {
-                    try {
-                        expirationDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(dateStr);
-                    } catch (ParseException e) {
-                        e.printStackTrace();
+                    String dateStr = cdkConfig.getString(id + "." + cdkName + ".expiration");
+                    if (dateStr != null) {
+                        try {
+                            expirationDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(dateStr);
+                        } catch (ParseException e) {
+                            e.printStackTrace();
+                        }
                     }
-                }
 
-                CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate);
-                
-                // 加载已兑换玩家列表
-                List<String> redeemedPlayersList = cdkConfig.getStringList(id + "." + cdkName + ".redeemedPlayers");
-                Set<String> redeemedPlayers = new HashSet<>(redeemedPlayersList);
-                cdk.setRedeemedPlayers(redeemedPlayers);
-                
-                // 确保redeemedPlayers不为null
-                if (cdk.getRedeemedPlayers() == null) {
-                    cdk.setRedeemedPlayers(new HashSet<>());
-                }
-                
-                cdkMap.computeIfAbsent(id, k -> new HashMap<>()).put(name, cdk);
-            });
+                    CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate);
+                    
+                    // 加载已兑换玩家列表
+                    List<String> redeemedPlayersList = cdkConfig.getStringList(id + "." + cdkName + ".redeemedPlayers");
+                    Set<String> redeemedPlayers = new HashSet<>(redeemedPlayersList);
+                    cdk.setRedeemedPlayers(redeemedPlayers);
+                    
+                    // 确保redeemedPlayers不为null
+                    if (cdk.getRedeemedPlayers() == null) {
+                        cdk.setRedeemedPlayers(new HashSet<>());
+                    }
+                    
+                    cdkMap.computeIfAbsent(id, k -> new HashMap<>()).put(name, cdk);
+                });
+            }
         }
     }
 
@@ -86,31 +102,37 @@ public class CDKManager {
      * 保存CDK配置
      */
     public void saveCDKs() {
-        cdkConfig.getKeys(false).forEach(key -> cdkConfig.set(key, null)); // 清空现有内容，避免累积
-        for (Map.Entry<String, Map<String, CDK>> entry : cdkMap.entrySet()) {
-            String id = entry.getKey();
-            for (CDK cdk : entry.getValue().values()) {
-                String basePath = id + "." + cdk.getName();
-                cdkConfig.set(basePath + ".name", cdk.getName());
-                cdkConfig.set(basePath + ".quantity", cdk.getQuantity());
-                cdkConfig.set(basePath + ".single", cdk.isSingleUse());
-                cdkConfig.set(basePath + ".commands", cdk.getCommands());
-                if (cdk.getExpirationDate() != null) {
-                    cdkConfig.set(basePath + ".expiration", new SimpleDateFormat("yyyy-MM-dd HH:mm").format(cdk.getExpirationDate()));
-                }
-                // 保存已兑换玩家列表
-                if (cdk.getRedeemedPlayers() != null) {
-                    cdkConfig.set(basePath + ".redeemedPlayers", new ArrayList<>(cdk.getRedeemedPlayers())); // 将 Set 转换为 List
-                } else {
-                    cdkConfig.set(basePath + ".redeemedPlayers", new ArrayList<>());
+        if ("sqlite".equalsIgnoreCase(storageMode) || "mysql".equalsIgnoreCase(storageMode)) {
+            // 保存到数据库
+            databaseManager.saveCDKs(cdkMap);
+        } else {
+            // 保存到YAML文件
+            cdkConfig.getKeys(false).forEach(key -> cdkConfig.set(key, null)); // 清空现有内容，避免累积
+            for (Map.Entry<String, Map<String, CDK>> entry : cdkMap.entrySet()) {
+                String id = entry.getKey();
+                for (CDK cdk : entry.getValue().values()) {
+                    String basePath = id + "." + cdk.getName();
+                    cdkConfig.set(basePath + ".name", cdk.getName());
+                    cdkConfig.set(basePath + ".quantity", cdk.getQuantity());
+                    cdkConfig.set(basePath + ".single", cdk.isSingleUse());
+                    cdkConfig.set(basePath + ".commands", cdk.getCommands());
+                    if (cdk.getExpirationDate() != null) {
+                        cdkConfig.set(basePath + ".expiration", new SimpleDateFormat("yyyy-MM-dd HH:mm").format(cdk.getExpirationDate()));
+                    }
+                    // 保存已兑换玩家列表
+                    if (cdk.getRedeemedPlayers() != null) {
+                        cdkConfig.set(basePath + ".redeemedPlayers", new ArrayList<>(cdk.getRedeemedPlayers())); // 将 Set 转换为 List
+                    } else {
+                        cdkConfig.set(basePath + ".redeemedPlayers", new ArrayList<>());
+                    }
                 }
             }
-        }
-        try {
-            cdkConfig.save(cdkFile);
-        } catch (IOException e) {
-            plugin.getLogger().severe("保存 CDK 文件时出错！");
-            e.printStackTrace();
+            try {
+                cdkConfig.save(cdkFile);
+            } catch (IOException e) {
+                plugin.getLogger().severe("保存 CDK 文件时出错！");
+                e.printStackTrace();
+            }
         }
     }
 
@@ -244,5 +266,212 @@ public class CDKManager {
      */
     public void updateConfig(FileConfiguration config) {
         this.config = config;
+        this.storageMode = config.getString("storage_mode", "yaml");
+        
+        // 如果切换到数据库模式，初始化数据库管理器
+        if (("sqlite".equalsIgnoreCase(storageMode) || "mysql".equalsIgnoreCase(storageMode)) && databaseManager == null) {
+            this.databaseManager = new DatabaseManager(plugin, config, storageMode);
+            // 重新加载数据
+            loadCDKs();
+        } else if (!("sqlite".equalsIgnoreCase(storageMode) || "mysql".equalsIgnoreCase(storageMode))) {
+            // 关闭数据库连接
+            if (databaseManager != null) {
+                databaseManager.close();
+                databaseManager = null;
+            }
+        }
+    }
+    
+    /**
+     * 获取当前存储模式
+     * 
+     * @return 当前存储模式
+     */
+    public String getStorageMode() {
+        return storageMode;
+    }
+    
+    /**
+     * 从YAML迁移到数据库
+     * 
+     * @return 迁移的CDK数量
+     */
+    public int migrateYamlToDatabase() {
+        if (!"yaml".equalsIgnoreCase(storageMode)) {
+            throw new IllegalStateException("当前不是YAML模式，无法执行迁移");
+        }
+        
+        // 保存当前模式
+        String oldMode = storageMode;
+        
+        try {
+            // 切换到数据库模式
+            storageMode = config.getString("storage_mode", "sqlite"); // 获取配置中指定的数据库类型
+            if (databaseManager == null) {
+                databaseManager = new DatabaseManager(plugin, config, storageMode);
+            }
+            
+            // 保存当前数据到数据库
+            saveCDKs();
+            
+            return cdkMap.values().stream().mapToInt(Map::size).sum();
+        } finally {
+            // 恢复原来的模式
+            storageMode = oldMode;
+        }
+    }
+    
+    /**
+     * 从数据库导出到YAML
+     * 
+     * @return 导出的CDK数量
+     */
+    public int exportDatabaseToYaml() {
+        if (!("sqlite".equalsIgnoreCase(storageMode) || "mysql".equalsIgnoreCase(storageMode))) {
+            throw new IllegalStateException("当前不是数据库模式，无法执行导出");
+        }
+        
+        // 保存当前模式
+        String oldMode = storageMode;
+        
+        try {
+            // 切换到YAML模式
+            storageMode = "yaml";
+            
+            // 确保YAML文件存在
+            cdkFile = new File(plugin.getDataFolder(), "cdk.yml");
+            if (!cdkFile.exists()) {
+                try {
+                    cdkFile.createNewFile();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            cdkConfig = YamlConfiguration.loadConfiguration(cdkFile);
+            
+            // 保存当前数据到YAML
+            saveCDKs();
+            
+            return cdkMap.values().stream().mapToInt(Map::size).sum();
+        } catch (Exception e) {
+            plugin.getLogger().severe("导出数据时出错: " + e.getMessage());
+            e.printStackTrace();
+            return 0;
+        } finally {
+            // 恢复原来的模式
+            storageMode = oldMode;
+        }
+    }
+    
+    /**
+     * 从YAML直接迁移到指定的数据库类型，不考虑当前的storageMode
+     * 
+     * @param targetDatabaseType 目标数据库类型 (sqlite 或 mysql)
+     * @return 迁移的CDK数量
+     */
+    public int migrateYamlToDatabaseDirect(String targetDatabaseType) {
+        // 保存当前模式
+        String oldMode = storageMode;
+        DatabaseManager oldDatabaseManager = databaseManager;
+        
+        try {
+            // 切换到数据库模式
+            storageMode = targetDatabaseType;
+            databaseManager = new DatabaseManager(plugin, config, targetDatabaseType);
+            
+            // 先从YAML加载数据
+            cdkMap.clear();
+            File yamlFile = new File(plugin.getDataFolder(), "cdk.yml");
+            if (yamlFile.exists()) {
+                FileConfiguration yamlConfig = YamlConfiguration.loadConfiguration(yamlFile);
+                for (String id : yamlConfig.getKeys(false)) {
+                    yamlConfig.getConfigurationSection(id).getKeys(false).forEach(cdkName -> {
+                        String name = yamlConfig.getString(id + "." + cdkName + ".name");
+                        int quantity = yamlConfig.getInt(id + "." + cdkName + ".quantity");
+                        boolean isSingleUse = yamlConfig.getBoolean(id + "." + cdkName + ".single");
+                        String commands = yamlConfig.getString(id + "." + cdkName + ".commands");
+                        Date expirationDate = null;
+
+                        String dateStr = yamlConfig.getString(id + "." + cdkName + ".expiration");
+                        if (dateStr != null) {
+                            try {
+                                expirationDate = new SimpleDateFormat("yyyy-MM-dd HH:mm").parse(dateStr);
+                            } catch (ParseException e) {
+                                e.printStackTrace();
+                            }
+                        }
+
+                        CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate);
+                        
+                        // 加载已兑换玩家列表
+                        List<String> redeemedPlayersList = yamlConfig.getStringList(id + "." + cdkName + ".redeemedPlayers");
+                        Set<String> redeemedPlayers = new HashSet<>(redeemedPlayersList);
+                        cdk.setRedeemedPlayers(redeemedPlayers);
+                        
+                        // 确保redeemedPlayers不为null
+                        if (cdk.getRedeemedPlayers() == null) {
+                            cdk.setRedeemedPlayers(new HashSet<>());
+                        }
+                        
+                        cdkMap.computeIfAbsent(id, k -> new HashMap<>()).put(name, cdk);
+                    });
+                }
+            }
+            
+            // 保存当前数据到数据库
+            saveCDKs();
+            
+            return cdkMap.values().stream().mapToInt(Map::size).sum();
+        } finally {
+            // 恢复原来的模式
+            storageMode = oldMode;
+            databaseManager = oldDatabaseManager;
+        }
+    }
+    
+    /**
+     * 从数据库直接导出到YAML，不考虑当前的storageMode
+     * 
+     * @param sourceDatabaseType 源数据库类型 (sqlite 或 mysql)
+     * @return 导出的CDK数量
+     */
+    public int exportDatabaseToYamlDirect(String sourceDatabaseType) {
+        // 保存当前模式
+        String oldMode = storageMode;
+        DatabaseManager oldDatabaseManager = databaseManager;
+        
+        try {
+            // 切换到YAML模式
+            storageMode = "yaml";
+            
+            // 确保YAML文件存在
+            cdkFile = new File(plugin.getDataFolder(), "cdk.yml");
+            if (!cdkFile.exists()) {
+                try {
+                    cdkFile.createNewFile();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            cdkConfig = YamlConfiguration.loadConfiguration(cdkFile);
+            
+            // 从数据库加载数据
+            databaseManager = new DatabaseManager(plugin, config, sourceDatabaseType);
+            cdkMap.clear();
+            cdkMap.putAll(databaseManager.loadCDKs());
+            
+            // 保存当前数据到YAML
+            saveCDKs();
+            
+            return cdkMap.values().stream().mapToInt(Map::size).sum();
+        } catch (Exception e) {
+            plugin.getLogger().severe("导出数据时出错: " + e.getMessage());
+            e.printStackTrace();
+            return 0;
+        } finally {
+            // 恢复原来的模式
+            storageMode = oldMode;
+            databaseManager = oldDatabaseManager;
+        }
     }
 }

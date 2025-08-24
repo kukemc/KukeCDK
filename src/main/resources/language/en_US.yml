@@ -1,66 +1,89 @@
-# KukeCDK English language file (en_US)
+# English language file
 
 # General messages
-prefix: "&7[&bKukeCDK&7] &r"
-no_permission: "&cYou don't have permission to execute this command!"
-unknown_command: "&cUnknown command! Use /cdk help to see the command list."
-no_permission_use: "&cYou don't have permission to use this CDK!"
+prefix: "§7[§bKukeCDK§7] §r"
+no_permission: "§cYou don't have permission to execute this command!"
+unknown_command: "§cUnknown command! Use /cdk help to see command list."
+no_permission_use: "§cYou don't have permission to use this CDK!"
 
 # Help information
-help_header: "&6===== &e&lKukeCDK Help &6=====&r"
-help_create: "&b/cdk create single <id> <quantity> \"<command1|command2|...>\" [expiration] &7- Create a one-time CDK"
-help_create_multiple: "&b/cdk create multiple <name|random> <id> <quantity> \"<command1|command2|...>\" [expiration] &7-Create a reusable CDK"
-help_add: "&b/cdk add <id> <quantity> &7- Batch generate/increase the number of uses"
-help_delete: "&b/cdk delete <cdk|id> <content> &7- Delete CDK/Delete all CDKs under this id and id"
-help_list: "&b/cdk list &7- List all CDKs"
-help_reload: "&b/cdk reload &7- Reload configuration and language files"
-help_export: "&b/cdk export &7- Export all CDKs"
-help_use: "&b/cdk use <CDK> &7- Use a CDK"
-help_footer: "&6========================="
+help_header: "§6===== §e§lKukeCDK Help §6=====&r"
+help_create: "§b/cdk create single <id> <quantity> \"<command1|command2|...>\" [expiration] §7- Create a one-time CDK"
+help_create_multiple: "§b/cdk create multiple <name|random> <id> <quantity> \"<command1|command2|...>\" [expiration] §7- Create a reusable CDK"
+help_add: "§b/cdk add <id> <quantity> §7- Batch generate/increase usage count"
+help_delete: "§b/cdk delete <cdk|id> <content> §7- Delete CDK/delete all CDKs under this id"
+help_list: "§b/cdk list §7- List all CDKs"
+help_reload: "§b/cdk reload §7- Reload configuration and language files"
+help_export: "§b/cdk export §7- Export all CDKs"
+help_use: "§b/cdk use <CDK> §7- Use a CDK"
+help_migrate: "§b/cdk migrate <source> <target> §7- Migrate data between storage modes"
+help_footer: "§6========================="
 
 # Create CDK related messages
-create_usage_single: "Usage: /cdk create single <id> <quantity> \"<command1|command2|...>\" [expiration]"
-create_usage_multiple: "Usage: /cdk create multiple <name|random> <id> <quantity> \"<command1|command2|...>\" [expiration]"
-create_example_single: "Example: /cdk create single diamond1 5 \"give %player% diamond 1\" 2024-12-01 10:00"
-create_example_multiple: "Example: /cdk create multiple vip666 diamond10 999 \"give %player% diamond 10\" 2024-12-01 10:00"
-invalid_quantity: "&cQuantity must be a valid number!"
-invalid_cdk_type: "&cInvalid CDK type! Please use 'single' or 'multiple'."
-invalid_date_format: "&cInvalid date format! Please use yyyy-MM-dd HH:mm format."
-create_success_single: "&aSuccessfully created one-time CDK, quantity: &e%quantity%&a, ID: &e%id%"
-create_success_multiple: "&aSuccessfully created multi-use CDK, name: %cdk%, usage count: &e%quantity%&a, ID: &e%id%"
+create_usage_single: "§cUsage: /cdk create single <id> <quantity> \"<command1|command2|...>\" [expiration]"
+create_usage_multiple: "§cUsage: /cdk create multiple <name|random> <id> <quantity> \"<command1|command2|...>\" [expiration]"
+create_example_single: "§cExample: /cdk create single Exchange1Diamond 5 \"give %player% diamond 1\" 2024-12-01 10:00"
+create_example_multiple: "§cExample: /cdk create multiple vip666 Exchange10Diamond 999 \"give %player% diamond 10\" 2024-12-01 10:00"
+invalid_quantity: "§cQuantity must be a valid number!"
+invalid_cdk_type: "§cInvalid CDK type! Please use 'single' or 'multiple'."
+invalid_expiration: "§cInvalid date format! Please use yyyy-MM-dd HH:mm format."
+create_success_single: "§aSuccessfully created one-time CDK, quantity: §e%quantity%§a, ID: §e%id%"
+create_success_multiple: "§aSuccessfully created multiple-use CDK, name: %cdk%, usage count: §e%quantity%§a, ID: §e%id%"
 
 # Add CDK related messages
-add_usage: "Usage: /cdk add <CDK> <id> \"<command1|command2|...>\" [expiration]"
-add_example: "Example: /cdk add ABC123 diamond \"give %player% diamond 1\" 2024-12-01 10:00"
-add_success: "&aSuccessfully added CDK, ID: &e%id%&a, Quantity: &e%quantity%"
-cdk_already_exists: "&cCDK &e%cdk% &calready exists!"
+add_usage: "§cUsage: /cdk add <CDK> <id> \"<command1|command2|...>\" [expiration]"
+add_example: "§cExample: /cdk add ABC123 ExchangeDiamond \"give %player% diamond 1\" 2024-12-01 10:00"
+add_success: "§aSuccessfully added CDK, ID: §e%id%§a, quantity: §e%quantity%"
+cdk_already_exists: "§cCDK §e%cdk% §calready exists!"
 
 # Delete CDK related messages
-delete_usage: "Usage: /cdk delete <cdk|id> <content>"
-delete_success: "&aSuccessfully deleted CDK: &e%cdk%"
-cdk_not_found: "&cCDK &e%cdk% &cdoes not exist!"
+delete_usage: "§cUsage: /cdk delete <cdk|id> <content>"
+delete_success: "§aSuccessfully deleted CDK: §e%cdk%"
+cdk_not_found: "§cCDK §e%cdk% §cdoes not exist!"
 
 # List related messages
-list_header: "&6===== &bCDK List &6=====&r"
-list_item: "&b%cdk% &7- &a%id% &7- &e%commands% &7- &c%expiration%"
-list_footer: "&6===================="
-list_empty: "&cThere are no CDKs currently!"
+list_header: "§6===== §bCDK List §6=====&r"
+list_item: "§b%cdk% §7- §a%id% §7- §e%commands% §7- §c%expiration%"
+list_empty: "§cThere are no CDKs!"
+list_footer: "§6===================="
 
 # Reload related messages
-reload_success: "&aSuccessfully reloaded configuration and language files!"
+reload_success: "§aSuccessfully reloaded configuration and language files!"
 
 # Export related messages
-export_success: "&aSuccessfully exported all CDKs to &e%file%&a!"
-export_failed: "&cError exporting CDKs!"
+export_success: "§aSuccessfully exported all CDKs to §e%file%§a!"
+export_failed: "§cError occurred while exporting CDKs!"
 
 # Use CDK related messages
-use_usage: "Usage: /cdk use <CDK>"
-use_player_only: "&cOnly players can use CDKs!"
-use_success: "&aSuccessfully used CDK: &e%cdk%&a!"
-cdk_expired: "&cCDK &e%cdk% &chas expired!"
-cdk_already_used: "&cYou have already used this CDK!"
+use_usage: "§cUsage: /cdk use <CDK>"
+use_player_only: "§cOnly players can use CDKs!"
+use_success: "§aSuccessfully used CDK: §e%cdk%§a!"
+cdk_expired: "§cCDK §e%cdk% §chas expired!"
+cdk_already_used: "§cYou have already used this CDK!"
+cdk_not_found_with_attempts: "§cCDK §e%cdk% §cdoes not exist! Failed attempts: §e%attempts%§c, Remaining attempts: §e%remaining%"
+
+# Migration command related messages
+migrate_usage: "§cUsage: /cdk migrate <yaml|sqlite|mysql> <yaml|sqlite|mysql> [confirm]"
+migrate_to_yaml_success: "§aSuccessfully exported CDK data to YAML file"
+migrate_to_database_success: "§aSuccessfully migrated CDK data to database"
+migrate_invalid_mode: "§cInvalid storage mode. Available modes: yaml, sqlite, mysql"
+migrate_already_target_mode: "§cSource and target modes are the same (%mode%), no migration needed"
+migrate_unsupported_db_to_db: "§cDirect migration between different database types is not supported"
+migrate_wrong_mode: "§cUnsupported migration combination"
+migrate_error: "§cError occurred during data migration: %error%"
+migrate_confirm_warning: "§cWarning: This operation will migrate data from %source% to %target%"
+migrate_confirm_data_loss: "§cMigration process will overwrite target data, please backup important data!"
+migrate_confirm_instruction: "§cTo confirm execution, please enter: §e/cdk migrate %source% %target% confirm"
+
+# Command parameter error prompts
+invalid_command: "§cInvalid command format, please check parameters"
+command_empty: "§cCommand parameter cannot be empty!"
+
+# CDK usage restrictions
+too_many_failed_attempts: "§cYou have been temporarily banned from entering CDKs due to multiple failed attempts"
+ban_time_left: "§cBan will be lifted in %time% min %seconds% sec"
+ban_time_left_seconds: "§cBan will be lifted in %seconds% sec"
+player_banned_permanently: "§cYou have been temporarily banned from entering CDKs due to multiple wrong attempts!"
 
 # Other messages
-save_config_error: "&cError saving configuration file!"
-save_cdk_error: "&cError saving CDK data!"
-save_log_error: "&cError saving log data!"
+no_expiration: "No expiration"

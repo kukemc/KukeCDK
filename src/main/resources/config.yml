@@ -6,8 +6,31 @@ plugin_version: "1.0"
 # 语言设置 (可用: zh_CN, en_US)
 language: "zh_CN"
 
+# 存储模式 (可用: yaml, sqlite, mysql)
+storage_mode: "yaml"
+
+# MySQL 配置 (仅在 storage_mode 设置为 mysql 时有效)
+mysql:
+  host: "localhost"
+  port: 3306
+  database: "kukecdk"
+  username: "root"
+  password: "password"
+  table_prefix: "kukecdk_"
+
 # 默认生成的 CDK 字符库
 default_cdk_characters: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 # 默认生成的 CDK 名称长度
 default_cdk_name_length: 8
+
+# 失败尝试配置
+failed_attempts:
+  # 是否启用失败尝试限制
+  enabled: true
+  # 允许的最大失败尝试次数
+  max_attempts: 3
+  # 禁止时长（单位：分钟）
+  ban_duration: 10
+  # 失败尝试记录重置时间（单位：分钟），默认10分钟
+  reset_duration: 10

@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/KukeCDK.iml" filepath="$PROJECT_DIR$/.idea/modules/KukeCDK.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/KukeCDK.main.iml" filepath="$PROJECT_DIR$/.idea/modules/KukeCDK.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/su.KukeCDK.main.iml" filepath="$PROJECT_DIR$/.idea/modules/su.KukeCDK.main.iml" />
     </modules>
   </component>
 </project>

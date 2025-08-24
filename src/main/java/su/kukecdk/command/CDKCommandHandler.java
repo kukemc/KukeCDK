@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import su.kukecdk.manager.CDKManager;
 import su.kukecdk.manager.LanguageManager;
 import su.kukecdk.manager.LogManager;
+import su.kukecdk.manager.FailedAttemptsManager;
 import su.kukecdk.model.CDK;
 
 import java.io.File;
@@ -18,6 +19,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * CDK命令处理器类，负责处理所有CDK相关命令
@@ -26,6 +28,7 @@ public class CDKCommandHandler {
     private final CDKManager cdkManager;
     private final LogManager logManager;
     private final LanguageManager languageManager;
+    private final FailedAttemptsManager failedAttemptsManager;
     private final File dataFolder;
 
     /**
@@ -34,12 +37,14 @@ public class CDKCommandHandler {
      * @param cdkManager CDK管理器
      * @param logManager 日志管理器
      * @param languageManager 语言管理器
+     * @param failedAttemptsManager 失败尝试管理器
      * @param dataFolder 插件数据文件夹
      */
-    public CDKCommandHandler(CDKManager cdkManager, LogManager logManager, LanguageManager languageManager, File dataFolder) {
+    public CDKCommandHandler(CDKManager cdkManager, LogManager logManager, LanguageManager languageManager, FailedAttemptsManager failedAttemptsManager, File dataFolder) {
         this.cdkManager = cdkManager;
         this.logManager = logManager;
         this.languageManager = languageManager;
+        this.failedAttemptsManager = failedAttemptsManager;
         this.dataFolder = dataFolder;
     }
 
@@ -80,11 +85,11 @@ public class CDKCommandHandler {
             try {
                 quantity = Integer.parseInt(args[4]); // 第四个参数是数量
             } catch (NumberFormatException e) {
-                sendMessageToSender(sender, languageManager.getMessage("invalid_quantity"));
+                sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("invalid_quantity"));
                 return true;
             }
         } else {
-            sendMessageToSender(sender, languageManager.getMessage("invalid_cdk_type"));
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("invalid_cdk_type"));
             return true;
         }
 
@@ -119,7 +124,7 @@ public class CDKCommandHandler {
         String commands = commandBuilder.toString().trim();
 
         if (commands.isEmpty()) {
-            sendMessageToSender(sender, languageManager.getMessage("prefix") + "命令参数不能为空！");
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("command_empty"));
             return true;
         }
 
@@ -128,7 +133,7 @@ public class CDKCommandHandler {
         if (expirationDateString != null) {
             expirationDate = parseDate(expirationDateString);
             if (expirationDate == null) {
-                sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("invalid_date_format"));
+                sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("invalid_expiration"));
                 return true;
             }
         }
@@ -143,7 +148,7 @@ public class CDKCommandHandler {
         } else if (type.equals("multiple")) {
             String cdkName = name.equalsIgnoreCase("random") ? cdkManager.generateUniqueRandomCDKName() : name;
             cdkManager.createCDK(id, cdkName, quantity, false, commands, expirationDate);
-            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("create_success_multiple", "%quantity%", String.valueOf(quantity), "%id%", id));
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("create_success_multiple", "%cdk%", cdkName, "%quantity%", String.valueOf(quantity), "%id%", id));
         } else {
             sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("invalid_cdk_type"));
             return true;
@@ -162,6 +167,7 @@ public class CDKCommandHandler {
     public boolean handleAddCommand(CommandSender sender, String[] args) {
         if (args.length < 3) {
             sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("add_usage"));
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("add_example"));
             return true;
         }
 
@@ -177,7 +183,7 @@ public class CDKCommandHandler {
 
         Map<String, CDK> cdkGroup = cdkManager.findCDKGroupById(id);
         if (cdkGroup == null || cdkGroup.isEmpty()) {
-            sendMessageToSender(sender, languageManager.getMessage("prefix") + "未找到对应的 CDK。");
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("cdk_not_found"));
             return true;
         }
 
@@ -195,7 +201,7 @@ public class CDKCommandHandler {
         }
 
         cdkManager.saveCDKs();
-        sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("add_success", "%cdk%", cdk.getName(), "%id%", id, "%quantity%", String.valueOf(quantity)));
+        sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("add_success", "%id%", id, "%quantity%", String.valueOf(quantity)));
 
         return true;
     }
@@ -215,6 +221,30 @@ public class CDKCommandHandler {
         }
         
         Player player = (Player) sender;
+        UUID playerUUID = player.getUniqueId();
+        
+        // 检查玩家是否被封禁
+        if (failedAttemptsManager.isPlayerBanned(playerUUID)) {
+            Long unbanTime = failedAttemptsManager.getUnbanTime(playerUUID);
+            if (unbanTime != null) {
+                long currentTime = System.currentTimeMillis();
+                long remainingTime = unbanTime - currentTime;
+                if (remainingTime > 0) {
+                    long minutes = remainingTime / 60000;
+                    long seconds = (remainingTime % 60000) / 1000;
+                    
+                    String timeMessage;
+                    if (minutes > 0) {
+                        timeMessage = languageManager.getMessage("ban_time_left", "%time%", String.valueOf(minutes), "%seconds%", String.valueOf(seconds));
+                    } else {
+                        timeMessage = languageManager.getMessage("ban_time_left_seconds", "%seconds%", String.valueOf(seconds));
+                    }
+                    
+                    player.sendMessage(languageManager.getMessage("prefix") + timeMessage);
+                    return true;
+                }
+            }
+        }
         
         if (args.length < 2) {
             player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("use_usage"));
@@ -225,7 +255,8 @@ public class CDKCommandHandler {
         CDK usedCDK = cdkManager.findCDKByName(cdkName);
 
         if (usedCDK == null) {
-            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("cdk_not_found", "%cdk%", cdkName));
+            // CDK不存在，记录失败尝试
+            handleFailedAttempt(player, cdkName);
             return true;
         }
 
@@ -256,11 +287,46 @@ public class CDKCommandHandler {
         usedCDK.addRedeemedPlayer(player.getName());
         cdkManager.saveCDKs();
 
+        // 清除失败尝试记录
+        failedAttemptsManager.clearFailedAttempts(playerUUID);
+        
         // 记录使用日志
         logManager.logCDKUsage(player.getName(), usedCDK);
         player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("use_success", "%cdk%", cdkName));
 
         return true;
+    }
+    
+    /**
+     * 处理失败尝试
+     * 
+     * @param player 玩家
+     * @param cdkName CDK名称
+     */
+    private void handleFailedAttempt(Player player, String cdkName) {
+        UUID playerUUID = player.getUniqueId();
+        boolean enabled = failedAttemptsManager.getConfigValue("failed_attempts.enabled", true);
+        
+        if (!enabled) {
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("cdk_not_found", "%cdk%", cdkName));
+            return;
+        }
+        
+        int maxAttempts = failedAttemptsManager.getConfigValue("failed_attempts.max_attempts", 3);
+        int attempts = failedAttemptsManager.recordFailedAttempt(playerUUID);
+        
+        if (attempts >= maxAttempts) {
+            // 达到最大尝试次数，封禁玩家
+            int banDurationMinutes = failedAttemptsManager.getConfigValue("failed_attempts.ban_duration", 10);
+            long banDurationMillis = banDurationMinutes * 60 * 1000L;
+            
+            failedAttemptsManager.banPlayer(playerUUID, banDurationMillis);
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("player_banned_permanently"));
+        } else {
+            // 未达到最大尝试次数，提示剩余次数
+            int remainingAttempts = maxAttempts - attempts;
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("cdk_not_found_with_attempts", "%cdk%", cdkName, "%attempts%", String.valueOf(attempts), "%remaining%", String.valueOf(remainingAttempts)));
+        }
     }
 
     /**
@@ -325,11 +391,17 @@ public class CDKCommandHandler {
         sendMessageToSender(sender, languageManager.getMessage("list_header"));
         for (Map<String, CDK> cdkGroup : allCDKs.values()) {
             for (CDK cdk : cdkGroup.values()) {
-                String type = cdk.isSingleUse() ? "一次性" : "多次兑换";
-                String quantityInfo = cdk.isSingleUse() ? "" : " 剩余兑换次数: " + cdk.getQuantity();
-                sendMessageToSender(sender, "- " + cdk.getName() + " (ID: " + cdk.getId() + ", 类型: " + type + ")" + quantityInfo);
+                String expiration = cdk.getExpirationDate() != null ? 
+                    new SimpleDateFormat("yyyy-MM-dd HH:mm").format(cdk.getExpirationDate()) : 
+                    languageManager.getMessage("no_expiration");
+                sendMessageToSender(sender, languageManager.getMessage("list_item", 
+                    "%cdk%", cdk.getName(), 
+                    "%id%", cdk.getId(), 
+                    "%commands%", cdk.getCommands(),
+                    "%expiration%", expiration));
             }
         }
+        sendMessageToSender(sender, languageManager.getMessage("list_footer"));
 
         return true;
     }
@@ -404,6 +476,7 @@ public class CDKCommandHandler {
         sendMessageToSender(sender, languageManager.getMessage("help_use"));
         sendMessageToSender(sender, languageManager.getMessage("help_reload"));
         sendMessageToSender(sender, languageManager.getMessage("help_export"));
+        sendMessageToSender(sender, languageManager.getMessage("help_migrate"));
         sendMessageToSender(sender, languageManager.getMessage("help_footer"));
 
         return true;
@@ -416,7 +489,7 @@ public class CDKCommandHandler {
      * @return 解析后的日期对象
      */
     private Date parseDate(String dateString) {
-        System.out.println("解析的时间字符串: " + dateString);
+        Bukkit.getLogger().info("解析的时间字符串: " + dateString);
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm");
         dateFormat.setTimeZone(java.util.TimeZone.getTimeZone("UTC")); // 根据需要更改时区
         dateFormat.setLenient(false); // 确保严格解析
