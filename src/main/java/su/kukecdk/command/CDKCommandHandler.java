@@ -274,7 +274,16 @@ public class CDKCommandHandler {
         String[] commands = usedCDK.getCommands().split("\\|");
         for (String command : commands) {
             String parsedCommand = command.replace("%player%", player.getName());
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), parsedCommand);
+            
+            // 在 Folia 环境下使用全局调度器执行命令
+            try {
+                Bukkit.getGlobalRegionScheduler().run(cdkManager.getPlugin(), (task) -> {
+                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), parsedCommand);
+                });
+            } catch (NoSuchMethodError e) {
+                // 如果不是 Folia 环境，直接执行命令
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), parsedCommand);
+            }
         }
 
         // 更新 CDK 使用信息

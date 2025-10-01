@@ -66,5 +66,15 @@
       <option name="name" value="maven3" />
       <option name="url" value="https://maven.aliyun.com/repository/gradle-plugin" />
     </remote-repository>
+    <remote-repository>
+      <option name="id" value="tcoded-releases" />
+      <option name="name" value="tcoded-releases" />
+      <option name="url" value="https://repo.tcoded.com/releases" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="jitpack" />
+      <option name="name" value="jitpack" />
+      <option name="url" value="https://jitpack.io" />
+    </remote-repository>
   </component>
 </project>

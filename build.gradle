@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'su'
-version = '1.5-SNAPSHOT'
+version = '1.6-SNAPSHOT'
 
 repositories {
     maven { 
@@ -35,15 +35,19 @@ repositories {
         url = "https://oss.sonatype.org/content/repositories/snapshots/"
         allowInsecureProtocol = true
     }
+    maven {
+        name = "papermc"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
 }
 
 dependencies {
-    compileOnly "org.spigotmc:spigot-api:1.12.2-R0.1-SNAPSHOT"
+    compileOnly "dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT"
     implementation 'org.xerial:sqlite-jdbc:3.34.0'
     implementation 'mysql:mysql-connector-java:8.0.28'
 }
 
-def targetJavaVersion = 8
+def targetJavaVersion = 17
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
     sourceCompatibility = javaVersion

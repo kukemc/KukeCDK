@@ -1,6 +1,7 @@
 name: KukeCDK
 version: '${version}'
 main: su.kukecdk.KukeCDK
+folia-supported: true
 commands:
   cdk:
     description: CDK 指令管理

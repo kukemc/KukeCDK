@@ -59,21 +59,43 @@ public class DatabaseManager {
         try {
             String tablePrefix = "mysql".equalsIgnoreCase(storageMode) ? config.getString("mysql.table_prefix", "kukecdk_") : "";
             
-            // 创建CDK表
-            String createCDKTableSQL = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "cdk (" +
-                    "id TEXT NOT NULL, " +
-                    "name TEXT NOT NULL PRIMARY KEY, " +
-                    "quantity INTEGER NOT NULL, " +
-                    "single_use BOOLEAN NOT NULL, " +
-                    "commands TEXT NOT NULL, " +
-                    "expiration_date TEXT" +
-                    ");";
+            // 根据数据库类型创建不同的SQL
+            String createCDKTableSQL;
+            String createRedeemedPlayersTableSQL;
             
-            String createRedeemedPlayersTableSQL = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "redeemed_players (" +
-                    "cdk_name TEXT NOT NULL, " +
-                    "player_name TEXT NOT NULL, " +
-                    "PRIMARY KEY (cdk_name, player_name)" +
-                    ");";
+            if ("mysql".equalsIgnoreCase(storageMode)) {
+                // MySQL使用VARCHAR类型以支持PRIMARY KEY
+                createCDKTableSQL = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "cdk (" +
+                        "id VARCHAR(255) NOT NULL, " +
+                        "name VARCHAR(255) NOT NULL PRIMARY KEY, " +
+                        "quantity INTEGER NOT NULL, " +
+                        "single_use BOOLEAN NOT NULL, " +
+                        "commands TEXT NOT NULL, " +
+                        "expiration_date VARCHAR(255)" +
+                        ");";
+                
+                createRedeemedPlayersTableSQL = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "redeemed_players (" +
+                        "cdk_name VARCHAR(255) NOT NULL, " +
+                        "player_name VARCHAR(255) NOT NULL, " +
+                        "PRIMARY KEY (cdk_name, player_name)" +
+                        ");";
+            } else {
+                // SQLite使用TEXT类型
+                createCDKTableSQL = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "cdk (" +
+                        "id TEXT NOT NULL, " +
+                        "name TEXT NOT NULL PRIMARY KEY, " +
+                        "quantity INTEGER NOT NULL, " +
+                        "single_use BOOLEAN NOT NULL, " +
+                        "commands TEXT NOT NULL, " +
+                        "expiration_date TEXT" +
+                        ");";
+                
+                createRedeemedPlayersTableSQL = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "redeemed_players (" +
+                        "cdk_name TEXT NOT NULL, " +
+                        "player_name TEXT NOT NULL, " +
+                        "PRIMARY KEY (cdk_name, player_name)" +
+                        ");";
+            }
 
             try (Statement statement = connection.createStatement()) {
                 statement.execute(createCDKTableSQL);

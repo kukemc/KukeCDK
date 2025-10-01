@@ -15,6 +15,7 @@ import su.kukecdk.metrics.Metrics;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * KukeCDK插件主类
@@ -58,11 +59,24 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         tabCompleter.setCDKManager(cdkManager);
         getCommand("cdk").setTabCompleter(tabCompleter);
 
-        // 定期检查过期的CDK
-        Bukkit.getScheduler().runTaskTimer(this, cdkManager::removeExpiredCDKs, 6000, 6000); // 每五分钟检查一次
-        
-        // 定期清理过期的失败尝试记录（每分钟检查一次）
-        Bukkit.getScheduler().runTaskTimer(this, this::cleanupFailedAttempts, 1200, 1200); // 每分钟检查一次
+        // 定期检查过期的CDK - 使用 Folia 兼容的调度器
+        try {
+            // 尝试使用 Folia 的全局调度器
+            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, (task) -> {
+                cdkManager.removeExpiredCDKs();
+            }, 300, 300); // 每15秒检查一次 (300 ticks = 15 seconds)
+            
+            // 定期清理过期的失败尝试记录
+            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, (task) -> {
+                cleanupFailedAttempts();
+            }, 60, 60); // 每3秒检查一次 (60 ticks = 3 seconds)
+            
+        } catch (NoSuchMethodError e) {
+            // 如果不是 Folia 环境，回退到传统调度器
+            getLogger().info("检测到非 Folia 环境，使用传统调度器");
+            Bukkit.getScheduler().runTaskTimer(this, cdkManager::removeExpiredCDKs, 6000, 6000);
+            Bukkit.getScheduler().runTaskTimer(this, this::cleanupFailedAttempts, 1200, 1200);
+        }
     }
     
     /**
