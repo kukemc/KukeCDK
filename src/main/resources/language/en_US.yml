@@ -16,6 +16,7 @@ help_list: "§b/cdk list §7- List all CDKs"
 help_reload: "§b/cdk reload §7- Reload configuration and language files"
 help_export: "§b/cdk export §7- Export all CDKs"
 help_use: "§b/cdk use <CDK> §7- Use a CDK"
+help_verify: "§b/cdk verify <CDK> §7- Verify CDK availability (without consuming)"
 help_migrate: "§b/cdk migrate <source> <target> §7- Migrate data between storage modes"
 help_footer: "§6========================="
 
@@ -61,6 +62,17 @@ use_success: "§aSuccessfully used CDK: §e%cdk%§a!"
 cdk_expired: "§cCDK §e%cdk% §chas expired!"
 cdk_already_used: "§cYou have already used this CDK!"
 cdk_not_found_with_attempts: "§cCDK §e%cdk% §cdoes not exist! Failed attempts: §e%attempts%§c, Remaining attempts: §e%remaining%"
+
+# Verify CDK related messages
+verify_usage: "§cUsage: /cdk verify <CDK>"
+verify_success: "§aCDK §e%cdk% §ais available!"
+verify_not_exist: "§cCDK §e%cdk% §cdoes not exist!"
+verify_expired: "§cCDK §e%cdk% §chas expired!"
+verify_already_used: "§cYou have already used CDK §e%cdk%§c!"
+verify_expiry_info: "§7Expiry date: §e%date%"
+verify_no_expiry: "§7No expiry date"
+verify_single_use: "§7Type: §eSingle use"
+verify_quantity_info: "§7Remaining uses: §e%quantity%"
 
 # Migration command related messages
 migrate_usage: "§cUsage: /cdk migrate <yaml|sqlite|mysql> <yaml|sqlite|mysql> [confirm]"

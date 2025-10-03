@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    // id 'com.github.johnrengelman.shadow' version '7.1.2'  // 暂时注释，网络问题
 }
 
 group = 'su'
@@ -42,12 +43,13 @@ repositories {
 }
 
 dependencies {
-    compileOnly "dev.folia:folia-api:1.20.1-R0.1-SNAPSHOT"
+    compileOnly "org.spigotmc:spigot-api:1.12.2-R0.1-SNAPSHOT"
     implementation 'org.xerial:sqlite-jdbc:3.34.0'
     implementation 'mysql:mysql-connector-java:8.0.28'
+    // implementation 'com.tcoded:FoliaLib:0.3.1'  // 暂时注释，网络问题
 }
 
-def targetJavaVersion = 17
+def targetJavaVersion = 8
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
     sourceCompatibility = javaVersion
@@ -73,3 +75,12 @@ processResources {
         expand props
     }
 }
+
+// shadowJar {
+//     relocate 'com.tcoded.folialib', 'su.kukecdk.libs.folialib'
+//     archiveClassifier.set('')
+// }
+
+// build {
+//     dependsOn shadowJar
+// }

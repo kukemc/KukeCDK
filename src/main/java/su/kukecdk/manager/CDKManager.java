@@ -260,15 +260,6 @@ public class CDKManager {
     }
 
     /**
-     * 获取插件实例
-     *
-     * @return 插件实例
-     */
-    public JavaPlugin getPlugin() {
-        return plugin;
-    }
-
-    /**
      * 更新配置
      *
      * @param config 新的配置

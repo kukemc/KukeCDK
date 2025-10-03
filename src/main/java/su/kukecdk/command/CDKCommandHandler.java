@@ -9,6 +9,7 @@ import su.kukecdk.manager.LanguageManager;
 import su.kukecdk.manager.LogManager;
 import su.kukecdk.manager.FailedAttemptsManager;
 import su.kukecdk.model.CDK;
+// import com.tcoded.folialib.FoliaLib;  // 暂时注释，网络问题
 
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +31,7 @@ public class CDKCommandHandler {
     private final LanguageManager languageManager;
     private final FailedAttemptsManager failedAttemptsManager;
     private final File dataFolder;
+    // private final FoliaLib foliaLib;  // 暂时注释，网络问题
 
     /**
      * 创建一个新的CDK命令处理器
@@ -46,6 +48,7 @@ public class CDKCommandHandler {
         this.languageManager = languageManager;
         this.failedAttemptsManager = failedAttemptsManager;
         this.dataFolder = dataFolder;
+        // this.foliaLib = foliaLib;  // 暂时注释，网络问题
     }
 
     /**
@@ -275,15 +278,8 @@ public class CDKCommandHandler {
         for (String command : commands) {
             String parsedCommand = command.replace("%player%", player.getName());
             
-            // 在 Folia 环境下使用全局调度器执行命令
-            try {
-                Bukkit.getGlobalRegionScheduler().run(cdkManager.getPlugin(), (task) -> {
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), parsedCommand);
-                });
-            } catch (NoSuchMethodError e) {
-                // 如果不是 Folia 环境，直接执行命令
-                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), parsedCommand);
-            }
+            // 暂时使用传统方式执行命令
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), parsedCommand);
         }
 
         // 更新 CDK 使用信息
@@ -303,6 +299,67 @@ public class CDKCommandHandler {
         logManager.logCDKUsage(player.getName(), usedCDK);
         player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("use_success", "%cdk%", cdkName));
 
+        return true;
+    }
+    
+    /**
+     * 处理验证命令
+     * 
+     * @param sender 命令发送者
+     * @param args 命令参数
+     * @return 是否处理成功
+     */
+    public boolean handleVerifyCommand(CommandSender sender, String[] args) {
+        // 检查发送者是否为玩家
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("use_player_only"));
+            return true;
+        }
+        
+        Player player = (Player) sender;
+        
+        if (args.length < 2) {
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("verify_usage"));
+            return true;
+        }
+
+        String cdkName = args[1];
+        CDK cdk = cdkManager.findCDKByName(cdkName);
+
+        if (cdk == null) {
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("verify_not_exist", "%cdk%", cdkName));
+            return true;
+        }
+
+        if (cdk.isExpired()) {
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("verify_expired", "%cdk%", cdkName));
+            return true;
+        }
+
+        if (cdk.hasPlayerRedeemed(player.getName())) {
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("verify_already_used", "%cdk%", cdkName));
+            return true;
+        }
+
+        // CDK可用
+        String expiryInfo = "";
+        if (cdk.getExpirationDate() != null) {
+            expiryInfo = languageManager.getMessage("verify_expiry_info", "%date%", cdk.getExpirationDate().toString());
+        } else {
+            expiryInfo = languageManager.getMessage("verify_no_expiry");
+        }
+        
+        String quantityInfo = "";
+        if (cdk.isSingleUse()) {
+            quantityInfo = languageManager.getMessage("verify_single_use");
+        } else {
+            quantityInfo = languageManager.getMessage("verify_quantity_info", "%quantity%", String.valueOf(cdk.getQuantity()));
+        }
+        
+        player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("verify_success", "%cdk%", cdkName));
+        player.sendMessage(languageManager.getMessage("prefix") + expiryInfo);
+        player.sendMessage(languageManager.getMessage("prefix") + quantityInfo);
+        
         return true;
     }
     
@@ -388,18 +445,33 @@ public class CDKCommandHandler {
      * 处理列出CDK命令
      *
      * @param sender 命令发送者
+     * @param args 命令参数
      * @return 命令执行结果
      */
-    public boolean handleListCommand(CommandSender sender) {
+    public boolean handleListCommand(CommandSender sender, String[] args) {
         Map<String, Map<String, CDK>> allCDKs = cdkManager.getAllCDKs();
         if (allCDKs.isEmpty()) {
             sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("list_empty"));
             return true;
         }
 
+        // 检查是否有id参数
+        String filterId = null;
+        if (args.length > 1) {
+            filterId = args[1];
+        }
+
         sendMessageToSender(sender, languageManager.getMessage("list_header"));
+        boolean foundAny = false;
+        
         for (Map<String, CDK> cdkGroup : allCDKs.values()) {
             for (CDK cdk : cdkGroup.values()) {
+                // 如果指定了id过滤，只显示匹配的CDK
+                if (filterId != null && !cdk.getId().equals(filterId)) {
+                    continue;
+                }
+                
+                foundAny = true;
                 String expiration = cdk.getExpirationDate() != null ? 
                     new SimpleDateFormat("yyyy-MM-dd HH:mm").format(cdk.getExpirationDate()) : 
                     languageManager.getMessage("no_expiration");
@@ -410,6 +482,13 @@ public class CDKCommandHandler {
                     "%expiration%", expiration));
             }
         }
+        
+        // 如果指定了id但没有找到匹配的CDK
+        if (filterId != null && !foundAny) {
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + "未找到ID为 " + filterId + " 的CDK");
+            return true;
+        }
+        
         sendMessageToSender(sender, languageManager.getMessage("list_footer"));
 
         return true;
@@ -483,6 +562,7 @@ public class CDKCommandHandler {
         sendMessageToSender(sender, languageManager.getMessage("help_delete"));
         sendMessageToSender(sender, languageManager.getMessage("help_list"));
         sendMessageToSender(sender, languageManager.getMessage("help_use"));
+        sendMessageToSender(sender, languageManager.getMessage("help_verify"));
         sendMessageToSender(sender, languageManager.getMessage("help_reload"));
         sendMessageToSender(sender, languageManager.getMessage("help_export"));
         sendMessageToSender(sender, languageManager.getMessage("help_migrate"));
@@ -519,4 +599,6 @@ public class CDKCommandHandler {
         // 直接发送消息，LanguageManager已经处理了颜色代码
         sender.sendMessage(message);
     }
+    
+
 }

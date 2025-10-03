@@ -35,8 +35,12 @@ public class CDKTabCompleter implements TabCompleter {
                 if (args[0].isEmpty() || "use".startsWith(args[0].toLowerCase())) {
                     completions.add("use");
                 }
+                if (args[0].isEmpty() || "verify".startsWith(args[0].toLowerCase())) {
+                    completions.add("verify");
+                }
             }
             
+            // help命令对所有人可用
             if (args[0].isEmpty() || "help".startsWith(args[0].toLowerCase())) {
                 completions.add("help");
             }
@@ -55,6 +59,16 @@ public class CDKTabCompleter implements TabCompleter {
                     break;
                 case "migrate":
                     handleMigrateCompletion(args, completions);
+                    break;
+                case "list":
+                    handleListCompletion(args, completions);
+                    break;
+                case "use":
+                case "verify":
+                    handleUseVerifyCompletion(args, completions);
+                    break;
+                case "help":
+                    // help命令不需要额外参数
                     break;
             }
         }
@@ -87,41 +101,93 @@ public class CDKTabCompleter implements TabCompleter {
         }
     }
 
+    private void handleListCompletion(String[] args, List<String> completions) {
+        if (args.length == 2 && cdkManager != null) {
+            // 添加已存在的CDK ID列表
+            cdkManager.getAllCDKs().keySet().stream()
+                .filter(id -> args[1].isEmpty() || id.startsWith(args[1]))
+                .forEach(completions::add);
+            // 如果没有匹配的ID，添加占位符
+            if (completions.isEmpty()) {
+                completions.add("<id>");
+            }
+        } else if (args.length == 2 && cdkManager == null) {
+            completions.add("<id>");
+        }
+    }
+
+    /**
+     * 智能解析命令参数，正确处理引号内的内容
+     * @param args 原始参数数组
+     * @return 解析后的参数位置
+     */
+    private int getActualParameterPosition(String[] args) {
+        int position = 0;
+        boolean inQuotes = false;
+        
+        for (int i = 1; i < args.length; i++) {
+            String arg = args[i];
+            
+            // 检查是否开始引号
+            if (!inQuotes && arg.startsWith("\"")) {
+                inQuotes = true;
+                position++;
+                // 如果引号在同一个参数中结束
+                if (arg.endsWith("\"") && arg.length() > 1) {
+                    inQuotes = false;
+                }
+            } else if (inQuotes) {
+                // 在引号内，检查是否结束
+                if (arg.endsWith("\"")) {
+                    inQuotes = false;
+                }
+                // 引号内的参数不增加位置计数
+            } else {
+                // 普通参数
+                position++;
+            }
+        }
+        
+        return position;
+    }
+
     private void handleSingleCreateCompletion(String[] args, List<String> completions) {
-        switch (args.length) {
+        int position = getActualParameterPosition(args);
+        switch (position) {
+            case 1:
+                completions.add("<id>");
+                break;
+            case 2:
+                completions.add("<数量>");
+                break;
             case 3:
-                completions.add("<唯一ID>");
-                break;
-            case 4:
-                completions.add("<生成数量>");
-                break;
-            case 5:
                 completions.add("\"<命令1|命令2|...>\"");
                 break;
-            case 6:
-            case 7:
+            case 4:
+            case 5:
                 completions.add("[有效时间 yyyy-MM-dd HH:mm]");
                 break;
         }
     }
 
     private void handleMultipleCreateCompletion(String[] args, List<String> completions) {
-        switch (args.length) {
-            case 3:
-                completions.add("<名称>");
+        int position = getActualParameterPosition(args);
+        switch (position) {
+            case 1:
+                completions.add("<name>");
                 completions.add("random");
                 break;
+            case 2:
+                completions.add("<id>");
+                break;
+            case 3:
+                completions.add("<数量>");
+                break;
             case 4:
-                completions.add("<ID>");
-                break;
-            case 5:
-                completions.add("<可用次数>");
-                break;
-            case 6:
                 completions.add("\"<命令1|命令2|...>\"");
                 break;
-            case 7:
-            case 8:
+            case 5:
+            case 6:
                 completions.add("[有效时间 yyyy-MM-dd HH:mm]");
                 break;
         }
@@ -202,6 +268,22 @@ public class CDKTabCompleter implements TabCompleter {
             if (completions.isEmpty()) {
                 completions.add("<yaml|sqlite|mysql>");
             }
+        }
+    }
+
+    private void handleUseVerifyCompletion(String[] args, List<String> completions) {
+        if (args.length == 2 && cdkManager != null) {
+            // 添加已存在的CDK名称列表
+            cdkManager.getAllCDKs().values().stream()
+                .flatMap(map -> map.keySet().stream())
+                .filter(name -> args[1].isEmpty() || name.startsWith(args[1]))
+                .forEach(completions::add);
+            // 如果没有匹配的名称，添加占位符
+            if (completions.isEmpty()) {
+                completions.add("<cdk名称>");
+            }
+        } else if (args.length == 2 && cdkManager == null) {
+            completions.add("<cdk名称>");
         }
     }
 

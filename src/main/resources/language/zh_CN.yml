@@ -16,6 +16,7 @@ help_list: "§b/cdk list §7- 列出所有CDK"
 help_reload: "§b/cdk reload §7- 重新加载配置和语言文件"
 help_export: "§b/cdk export §7- 导出所有CDK"
 help_use: "§b/cdk use <CDK> §7- 使用一个CDK"
+help_verify: "§b/cdk verify <CDK> §7- 验证CDK的可用性（不消耗）"
 help_migrate: "§b/cdk migrate <源> <目标> §7- 在存储模式之间迁移数据"
 help_footer: "§6========================="
 
@@ -61,6 +62,17 @@ use_success: "§a成功使用了 CDK: §e%cdk%§a！"
 cdk_expired: "§cCDK §e%cdk% §c已过期！"
 cdk_already_used: "§c你已经使用过这个 CDK 了！"
 cdk_not_found_with_attempts: "§cCDK §e%cdk% §c不存在！失败次数: §e%attempts%§c，剩余尝试次数: §e%remaining%"
+
+# 验证CDK相关消息
+verify_usage: "§c用法: /cdk verify <CDK>"
+verify_success: "§aCDK §e%cdk% §a可用！"
+verify_not_exist: "§cCDK §e%cdk% §c不存在！"
+verify_expired: "§cCDK §e%cdk% §c已过期！"
+verify_already_used: "§c你已经使用过 CDK §e%cdk% §c了！"
+verify_expiry_info: "§7过期时间: §e%date%"
+verify_no_expiry: "§7无过期时间"
+verify_single_use: "§7类型: §e一次性使用"
+verify_quantity_info: "§7剩余使用次数: §e%quantity%"
 
 # 迁移命令相关消息
 migrate_usage: "§c用法: /cdk migrate <yaml|sqlite|mysql> <yaml|sqlite|mysql> [confirm]"

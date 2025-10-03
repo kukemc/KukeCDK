@@ -12,6 +12,7 @@ import su.kukecdk.manager.LanguageManager;
 import su.kukecdk.manager.LogManager;
 import su.kukecdk.manager.FailedAttemptsManager;
 import su.kukecdk.metrics.Metrics;
+// import com.tcoded.folialib.FoliaLib;  // 暂时注释，网络问题
 
 import java.util.Arrays;
 import java.util.List;
@@ -28,6 +29,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
     private LanguageManager languageManager;
     private FailedAttemptsManager failedAttemptsManager;
     private CDKCommandHandler commandHandler;
+    // private FoliaLib foliaLib;  // 暂时注释，网络问题
 
     @Override
     public void onEnable() {
@@ -45,6 +47,9 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         getLogger().info("KukeCDK v" + getDescription().getVersion() + " by KukeMC");
         getLogger().info("欢迎使用 KukeCDK");
 
+        // 初始化FoliaLib
+        // foliaLib = new FoliaLib(this);  // 暂时注释，网络问题
+
         // 初始化管理器
         configManager = new ConfigManager(this);
         cdkManager = new CDKManager(this, configManager.getConfig());
@@ -59,24 +64,13 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         tabCompleter.setCDKManager(cdkManager);
         getCommand("cdk").setTabCompleter(tabCompleter);
 
-        // 定期检查过期的CDK - 使用 Folia 兼容的调度器
-        try {
-            // 尝试使用 Folia 的全局调度器
-            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, (task) -> {
-                cdkManager.removeExpiredCDKs();
-            }, 300, 300); // 每15秒检查一次 (300 ticks = 15 seconds)
-            
-            // 定期清理过期的失败尝试记录
-            Bukkit.getGlobalRegionScheduler().runAtFixedRate(this, (task) -> {
-                cleanupFailedAttempts();
-            }, 60, 60); // 每3秒检查一次 (60 ticks = 3 seconds)
-            
-        } catch (NoSuchMethodError e) {
-            // 如果不是 Folia 环境，回退到传统调度器
-            getLogger().info("检测到非 Folia 环境，使用传统调度器");
-            Bukkit.getScheduler().runTaskTimer(this, cdkManager::removeExpiredCDKs, 6000, 6000);
-            Bukkit.getScheduler().runTaskTimer(this, this::cleanupFailedAttempts, 1200, 1200);
-        }
+        // 注意：定期检查过期的CDK功能已暂时禁用以兼容Folia服务器
+        // Folia不支持传统的Bukkit调度器API，需要使用FoliaLib或手动触发清理
+        // 过期CDK将在玩家使用CDK时进行检查和清理
+
+        // 注意：定期清理失败尝试记录功能已暂时禁用以兼容Folia服务器
+        // Folia不支持传统的Bukkit调度器API，需要使用FoliaLib或手动触发清理
+        // 失败尝试记录将在插件重启时自动清理
     }
     
     /**
@@ -88,6 +82,8 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
             // 可以添加日志记录或其他操作
         }
     }
+    
+
 
     @Override
     public void onDisable() {
@@ -127,11 +123,15 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
                 }
                 break;
             case "use":
+            case "verify":
                 // 检查使用权限
                 if (!sender.hasPermission("kukecdk.use")) {
                     sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("no_permission_use"));
                     return true;
                 }
+                break;
+            case "help":
+                // help命令对所有人可用，无需权限检查
                 break;
             default:
                 sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("unknown_command"));
@@ -147,13 +147,15 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
             case "delete":
                 return commandHandler.handleDeleteCommand(sender, args);
             case "list":
-                return commandHandler.handleListCommand(sender);
+                return commandHandler.handleListCommand(sender, args);
             case "reload":
                 return commandHandler.handleReloadCommand(sender);
             case "export":
                 return commandHandler.handleExportCommand(sender);
             case "use":
                 return commandHandler.handleUseCommand(sender, args);
+            case "verify":
+                return commandHandler.handleVerifyCommand(sender, args);
             case "help":
                 return commandHandler.displayHelp(sender);
             case "migrate":
