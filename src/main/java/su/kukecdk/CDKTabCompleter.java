@@ -152,42 +152,61 @@ public class CDKTabCompleter implements TabCompleter {
     }
 
     private void handleSingleCreateCompletion(String[] args, List<String> completions) {
-        int position = getActualParameterPosition(args);
-        switch (position) {
+        // args[0] = "create", args[1] = "single", args[2] = 第一个参数...
+        // 所以 args.length - 2 就是当前参数的位置（从1开始）
+        int parameterPosition = args.length - 2;
+        
+        switch (parameterPosition) {
             case 1:
+                // 第一个参数：<id>
                 completions.add("<id>");
                 break;
             case 2:
+                // 第二个参数：<数量>
                 completions.add("<数量>");
                 break;
             case 3:
+                // 第三个参数：命令
                 completions.add("\"<命令1|命令2|...>\"");
                 break;
             case 4:
             case 5:
+                // 第四个参数：有效时间（可选）
                 completions.add("[有效时间 yyyy-MM-dd HH:mm]");
                 break;
         }
     }
 
     private void handleMultipleCreateCompletion(String[] args, List<String> completions) {
-        int position = getActualParameterPosition(args);
-        switch (position) {
+        // args[0] = "create", args[1] = "multiple", args[2] = 第一个参数...
+        // 所以 args.length - 2 就是当前参数的位置（从1开始）
+        int parameterPosition = args.length - 2;
+        
+        switch (parameterPosition) {
             case 1:
-                completions.add("<name>");
-                completions.add("random");
+                // 第一个参数：<name|random>
+                if (args[2].isEmpty() || "random".startsWith(args[2].toLowerCase())) {
+                    completions.add("random");
+                }
+                if (args[2].isEmpty()) {
+                    completions.add("<name>");
+                }
                 break;
             case 2:
+                // 第二个参数：<id>
                 completions.add("<id>");
                 break;
             case 3:
+                // 第三个参数：<数量>
                 completions.add("<数量>");
                 break;
             case 4:
+                // 第四个参数：命令
                 completions.add("\"<命令1|命令2|...>\"");
                 break;
             case 5:
             case 6:
+                // 第五个参数：有效时间（可选）
                 completions.add("[有效时间 yyyy-MM-dd HH:mm]");
                 break;
         }
@@ -272,18 +291,26 @@ public class CDKTabCompleter implements TabCompleter {
     }
 
     private void handleUseVerifyCompletion(String[] args, List<String> completions) {
-        if (args.length == 2 && cdkManager != null) {
-            // 添加已存在的CDK名称列表
-            cdkManager.getAllCDKs().values().stream()
-                .flatMap(map -> map.keySet().stream())
-                .filter(name -> args[1].isEmpty() || name.startsWith(args[1]))
-                .forEach(completions::add);
-            // 如果没有匹配的名称，添加占位符
-            if (completions.isEmpty()) {
+        String subCommand = args[0].toLowerCase();
+        
+        if ("use".equals(subCommand)) {
+            // cdk use 指令不应该提供任何tab补全
+            return;
+        } else if ("verify".equals(subCommand)) {
+            // verify 指令可以补全CDK名称
+            if (args.length == 2 && cdkManager != null) {
+                // 添加已存在的CDK名称列表
+                cdkManager.getAllCDKs().values().stream()
+                    .flatMap(map -> map.keySet().stream())
+                    .filter(name -> args[1].isEmpty() || name.startsWith(args[1]))
+                    .forEach(completions::add);
+                // 如果没有匹配的名称，添加占位符
+                if (completions.isEmpty()) {
+                    completions.add("<cdk名称>");
+                }
+            } else if (args.length == 2 && cdkManager == null) {
                 completions.add("<cdk名称>");
             }
-        } else if (args.length == 2 && cdkManager == null) {
-            completions.add("<cdk名称>");
         }
     }
 
