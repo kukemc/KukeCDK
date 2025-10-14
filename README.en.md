@@ -12,7 +12,7 @@
 - Log every CDK redemption
 - View all generated CDKs at a glance
 - Create CDKs redeemable once per player
-- Folia-compatible (periodic tasks are disabled)
+- Folia-compatible
 - YAML, MySQL, and SQLite storage
 - Anvil GUI input for CDK (`/cdk anvil`)
 
@@ -38,18 +38,18 @@
 ## Usage Examples
 
 ```bash
-# Create 5 random single-use CDKs under id "钻石" expiring at 2024-12-01 10:00
-/cdk create single 钻石 5 "give %player% diamond 1" 2024-12-01 10:00
+# Create 5 random single-use CDKs under id "diamond" expiring at 2024-12-01 10:00
+/cdk create single diamond 5 "give %player% diamond 1" 2024-12-01 10:00
 
-# Create reusable CDK named "vip666" under id "黄金", 999 uses, expires at 2024-12-01 10:00
-/cdk create multiple vip666 黄金 999 "give %player% gold 10" 2024-12-01 10:00
+# Create reusable CDK named "vip123" under id "gold", 999 uses, expires at 2024-12-01 10:00
+/cdk create multiple vip123 gold 999 "give %player% gold 10" 2024-12-01 10:00
 
 # Batch generate/increase usage
-/cdk add 钻石 10
-/cdk add 黄金 10
+/cdk add diamond 10
+/cdk add gold 10
 
 # Execute multiple commands (split by |)
-/cdk create single 测试 3 "give %player% diamond 1|bc %player%兑换了CDK" 2024-12-01 10:00
+/cdk create single test 3 "give %player% diamond 1|bc %player% used a CDK" 2024-12-01 10:00
 
 # Open the Anvil GUI for redemption
 /cdk anvil
@@ -85,9 +85,9 @@ failed_attempts:
   reset_duration: 10
 
 anvil_gui:
-  title: "&bCDK兑换 - &f输入你的CDK"
+  title: "&bCDK Redemption - &fEnter your CDK"
   input_item_lore:
-    - "&7在上方输入你的CDK"
+    - "&7Enter your CDK above"
 ```
 
 ## Feedback

@@ -12,7 +12,7 @@
 - 支持记录所有 CDK 使用日志
 - 支持一键查看所有已生成的 CDK
 - 支持创建每名玩家都可兑换一次的 CDK
-- 兼容 Folia 服务端（部分周期任务已禁用）
+- 兼容 Folia 服务端
 - 支持 YAML、MySQL、SQLite 数据存储
 - 支持铁砧 GUI 输入 CDK（`/cdk anvil`）
 
