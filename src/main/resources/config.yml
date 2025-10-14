@@ -34,3 +34,9 @@ failed_attempts:
   ban_duration: 10
   # 失败尝试记录重置时间（单位：分钟），默认10分钟
   reset_duration: 10
+
+# 铁砧GUI设置（标题与物品文案支持PAPI变量与%player%）
+anvil_gui:
+  title: "&bCDK兑换 - &f输入你的CDK"
+  input_item_lore:
+    - "&7在上方输入你的CDK"

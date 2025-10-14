@@ -1,10 +1,10 @@
 plugins {
     id 'java'
-    // id 'com.github.johnrengelman.shadow' version '7.1.2'  // 暂时注释，网络问题
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'su'
-version = '1.6.1-SNAPSHOT'
+version = '1.7-SNAPSHOT'
 
 repositories {
     maven { 
@@ -40,13 +40,31 @@ repositories {
         name = "papermc"
         url = "https://repo.papermc.io/repository/maven-public/"
     }
+    maven {
+        name = "codemc-snapshots"
+        url = "https://repo.codemc.io/repository/maven-snapshots/"
+    }
 }
 
 dependencies {
     compileOnly "org.spigotmc:spigot-api:1.12.2-R0.1-SNAPSHOT"
     implementation 'org.xerial:sqlite-jdbc:3.34.0'
     implementation 'mysql:mysql-connector-java:8.0.28'
+    runtimeOnly 'net.wesjd:anvilgui:1.10.10-SNAPSHOT'
     // implementation 'com.tcoded:FoliaLib:0.3.1'  // 暂时注释，网络问题
+}
+
+// =============== Shadow 打包（重定位 AnvilGUI） ===============
+shadowJar {
+    // 为避免在 JDK8 环境下重定位高版本类导致 "Unsupported class file major version 65"，此处不进行重定位。
+    archiveClassifier.set('')
+    dependencies {
+        include(dependency('net.wesjd:anvilgui'))
+    }
+}
+
+build {
+    dependsOn shadowJar
 }
 
 def targetJavaVersion = 8

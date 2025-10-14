@@ -17,6 +17,7 @@ help_reload: "§b/cdk reload §7- 重新加载配置和语言文件"
 help_export: "§b/cdk export §7- 导出所有CDK"
 help_use: "§b/cdk use <CDK> §7- 使用一个CDK"
 help_verify: "§b/cdk verify <CDK> §7- 验证CDK的可用性（不消耗）"
+help_anvil: "§b/cdk anvil §7- 打开铁砧兑换界面"
 help_migrate: "§b/cdk migrate <源> <目标> §7- 在存储模式之间迁移数据"
 help_footer: "§6========================="
 

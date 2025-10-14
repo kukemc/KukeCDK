@@ -17,6 +17,7 @@ help_reload: "§b/cdk reload §7- Reload configuration and language files"
 help_export: "§b/cdk export §7- Export all CDKs"
 help_use: "§b/cdk use <CDK> §7- Use a CDK"
 help_verify: "§b/cdk verify <CDK> §7- Verify CDK availability (without consuming)"
+help_anvil: "§b/cdk anvil §7- Open the anvil redemption GUI"
 help_migrate: "§b/cdk migrate <source> <target> §7- Migrate data between storage modes"
 help_footer: "§6========================="
 

@@ -273,12 +273,10 @@ public class CDKCommandHandler {
             return true;
         }
 
-        // 执行命令并替换 %player% 占位符
+        // 执行命令，支持PAPI占位符，并保留内置%player%占位符
         String[] commands = usedCDK.getCommands().split("\\|");
         for (String command : commands) {
-            String parsedCommand = command.replace("%player%", player.getName());
-            
-            // 暂时使用传统方式执行命令
+            String parsedCommand = applyPlaceholders(player, command);
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), parsedCommand);
         }
 
@@ -563,6 +561,7 @@ public class CDKCommandHandler {
         sendMessageToSender(sender, languageManager.getMessage("help_list"));
         sendMessageToSender(sender, languageManager.getMessage("help_use"));
         sendMessageToSender(sender, languageManager.getMessage("help_verify"));
+        sendMessageToSender(sender, languageManager.getMessage("help_anvil"));
         sendMessageToSender(sender, languageManager.getMessage("help_reload"));
         sendMessageToSender(sender, languageManager.getMessage("help_export"));
         sendMessageToSender(sender, languageManager.getMessage("help_migrate"));
@@ -598,6 +597,30 @@ public class CDKCommandHandler {
     private void sendMessageToSender(CommandSender sender, String message) {
         // 直接发送消息，LanguageManager已经处理了颜色代码
         sender.sendMessage(message);
+    }
+    
+    /**
+     * 应用占位符解析：先替换插件自带的%player%，再解析PAPI占位符
+     */
+    private String applyPlaceholders(Player player, String text) {
+        if (text == null) return "";
+        String withBuiltin = text.replace("%player%", player.getName());
+        // PlaceholderAPI 支持（可选）
+        try {
+            org.bukkit.plugin.Plugin papi = Bukkit.getPluginManager().getPlugin("PlaceholderAPI");
+            if (papi != null) {
+                try {
+                    // 延迟到运行时调用，避免编译期依赖
+                    Class<?> cls = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
+                    java.lang.reflect.Method m = cls.getMethod("setPlaceholders", Player.class, String.class);
+                    Object out = m.invoke(null, player, withBuiltin);
+                    return out instanceof String ? (String) out : withBuiltin;
+                } catch (Throwable ignore) {
+                    return withBuiltin;
+                }
+            }
+        } catch (Throwable ignored) {}
+        return withBuiltin;
     }
     
 

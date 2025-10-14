@@ -12,6 +12,7 @@ import su.kukecdk.manager.LanguageManager;
 import su.kukecdk.manager.LogManager;
 import su.kukecdk.manager.FailedAttemptsManager;
 import su.kukecdk.metrics.Metrics;
+import su.kukecdk.gui.AnvilGUIManager;
 // import com.tcoded.folialib.FoliaLib;  // 暂时注释，网络问题
 
 import java.util.Arrays;
@@ -29,6 +30,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
     private LanguageManager languageManager;
     private FailedAttemptsManager failedAttemptsManager;
     private CDKCommandHandler commandHandler;
+    private AnvilGUIManager anvilGUIManager;
     // private FoliaLib foliaLib;  // 暂时注释，网络问题
 
     @Override
@@ -57,12 +59,15 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         languageManager = new LanguageManager(this, configManager);
         failedAttemptsManager = new FailedAttemptsManager(this);
         commandHandler = new CDKCommandHandler(cdkManager, logManager, languageManager, failedAttemptsManager, getDataFolder());
+        anvilGUIManager = new AnvilGUIManager(this, configManager.getConfig(), commandHandler);
 
         // 注册命令和Tab补全
         getCommand("cdk").setExecutor(this);
         CDKTabCompleter tabCompleter = new CDKTabCompleter();
         tabCompleter.setCDKManager(cdkManager);
         getCommand("cdk").setTabCompleter(tabCompleter);
+        // 注册事件监听器（用于铁砧GUI）
+        getServer().getPluginManager().registerEvents(anvilGUIManager, this);
 
         // 注意：定期检查过期的CDK功能已暂时禁用以兼容Folia服务器
         // Folia不支持传统的Bukkit调度器API，需要使用FoliaLib或手动触发清理
@@ -124,6 +129,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
                 break;
             case "use":
             case "verify":
+            case "anvil":
                 // 检查使用权限
                 if (!sender.hasPermission("kukecdk.use")) {
                     sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("no_permission_use"));
@@ -156,6 +162,15 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
                 return commandHandler.handleUseCommand(sender, args);
             case "verify":
                 return commandHandler.handleVerifyCommand(sender, args);
+            case "anvil":
+                if (sender instanceof org.bukkit.entity.Player) {
+                    org.bukkit.entity.Player p = (org.bukkit.entity.Player) sender;
+                    anvilGUIManager.openAnvil(p);
+                    return true;
+                } else {
+                    sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("use_player_only"));
+                    return true;
+                }
             case "help":
                 return commandHandler.displayHelp(sender);
             case "migrate":

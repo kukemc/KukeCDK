@@ -38,6 +38,9 @@ public class CDKTabCompleter implements TabCompleter {
                 if (args[0].isEmpty() || "verify".startsWith(args[0].toLowerCase())) {
                     completions.add("verify");
                 }
+                if (args[0].isEmpty() || "anvil".startsWith(args[0].toLowerCase())) {
+                    completions.add("anvil");
+                }
             }
             
             // help命令对所有人可用
@@ -152,9 +155,8 @@ public class CDKTabCompleter implements TabCompleter {
     }
 
     private void handleSingleCreateCompletion(String[] args, List<String> completions) {
-        // args[0] = "create", args[1] = "single", args[2] = 第一个参数...
-        // 所以 args.length - 2 就是当前参数的位置（从1开始）
-        int parameterPosition = args.length - 2;
+        // 引号感知的参数位置：整体位置减去类型本身
+        int parameterPosition = getActualParameterPosition(args) - 1;
         
         switch (parameterPosition) {
             case 1:
@@ -178,9 +180,8 @@ public class CDKTabCompleter implements TabCompleter {
     }
 
     private void handleMultipleCreateCompletion(String[] args, List<String> completions) {
-        // args[0] = "create", args[1] = "multiple", args[2] = 第一个参数...
-        // 所以 args.length - 2 就是当前参数的位置（从1开始）
-        int parameterPosition = args.length - 2;
+        // 引号感知的参数位置：整体位置减去类型本身
+        int parameterPosition = getActualParameterPosition(args) - 1;
         
         switch (parameterPosition) {
             case 1:
