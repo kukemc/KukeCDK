@@ -22,15 +22,15 @@
 | `/cdk use <CDK>` | 使用 CDK | `kukecdk.use` |
 | `/cdk verify <CDK>` | 验证 CDK 可用性（不消耗） | `kukecdk.use` |
 | `/cdk anvil` | 打开铁砧兑换界面 | `kukecdk.use` |
-| `/cdk create single <id> <数量> "<命令1|命令2|...>" [有效时间]` | 批量创建一次性 CDK | `kukecdk.admin.create` |
-| `/cdk create multiple <name|random> <id> <数量> "<命令1|命令2|...>" [有效时间]` | 创建可重复使用 CDK | `kukecdk.admin.create` |
+| `/cdk create single <id> <数量> "<命令1\|命令2\|...>" [有效时间]` | 批量创建一次性 CDK | `kukecdk.admin.create` |
+| `/cdk create multiple <name\|random> <id> <数量> "<命令1\|命令2\|...>" [有效时间]` | 创建可重复使用 CDK | `kukecdk.admin.create` |
 | `/cdk add <id> <数量>` | 根据 ID 批量生成/增加使用次数 | `kukecdk.admin.add` |
 | `/cdk delete cdk <CDK名称>` | 删除指定 CDK | `kukecdk.admin.delete` |
 | `/cdk delete id <id>` | 删除此 id 下的所有 CDK | `kukecdk.admin.delete` |
 | `/cdk list` | 查看所有 CDK | `kukecdk.admin.list` |
 | `/cdk export` | 导出 CDK 配置和日志 | `kukecdk.admin.export` |
 | `/cdk reload` | 重新加载配置和语言文件 | `kukecdk.admin.reload` |
-| `/cdk migrate <yaml|sqlite|mysql> <yaml|sqlite|mysql> [confirm]` | 在存储模式之间迁移数据 | `kukecdk.admin.migrate` |
+| `/cdk migrate <yaml\|sqlite\|mysql> <yaml\|sqlite\|mysql> [confirm]` | 在存储模式之间迁移数据 | `kukecdk.admin.migrate` |
 | `/cdk help` | 显示帮助信息 | — |
 
 > 提示：`create` 指令的命令参数需使用双引号括住，整段会被视为一个参数；内部使用管道符 `|` 分割多条命令。
@@ -97,6 +97,9 @@ anvil_gui:
   input_item_lore:
     - "&7在上方输入你的CDK"
 ```
+
+## 插件截图
+![插件截图](https://github.com/user-attachments/assets/83408843-b970-4474-8637-5865eaba800d)
 
 ## 反馈
 - QQ 讨论群：`981954623`

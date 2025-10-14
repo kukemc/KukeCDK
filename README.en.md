@@ -22,15 +22,15 @@
 | `/cdk use <CDK>` | Use a CDK | `kukecdk.use` |
 | `/cdk verify <CDK>` | Verify CDK availability (no consumption) | `kukecdk.use` |
 | `/cdk anvil` | Open the anvil redemption GUI | `kukecdk.use` |
-| `/cdk create single <id> <quantity> "<cmd1|cmd2|...>" [expiration]` | Create single-use CDKs in batch | `kukecdk.admin.create` |
-| `/cdk create multiple <name|random> <id> <quantity> "<cmd1|cmd2|...>" [expiration]` | Create reusable CDKs | `kukecdk.admin.create` |
+| `/cdk create single <id> <quantity> "<cmd1\|cmd2\|...>" [expiration]` | Create single-use CDKs in batch | `kukecdk.admin.create` |
+| `/cdk create multiple <name\|random> <id> <quantity> "<cmd1\|cmd2\|...>" [expiration]` | Create reusable CDKs | `kukecdk.admin.create` |
 | `/cdk add <id> <quantity>` | Batch generate/increase usage by ID | `kukecdk.admin.add` |
 | `/cdk delete cdk <name>` | Delete a CDK | `kukecdk.admin.delete` |
 | `/cdk delete id <id>` | Delete all CDKs under the id | `kukecdk.admin.delete` |
 | `/cdk list` | List all CDKs | `kukecdk.admin.list` |
 | `/cdk export` | Export CDKs and logs | `kukecdk.admin.export` |
 | `/cdk reload` | Reload config and language files | `kukecdk.admin.reload` |
-| `/cdk migrate <yaml|sqlite|mysql> <yaml|sqlite|mysql> [confirm]` | Migrate between storage modes | `kukecdk.admin.migrate` |
+| `/cdk migrate <yaml\|sqlite\|mysql> <yaml\|sqlite\|mysql> [confirm]` | Migrate between storage modes | `kukecdk.admin.migrate` |
 | `/cdk help` | Show help | — |
 
 > Tip: In `create` commands, wrap the command string in double quotes to treat it as a single argument. Use `|` inside to separate multiple commands.
@@ -89,6 +89,9 @@ anvil_gui:
   input_item_lore:
     - "&7Enter your CDK above"
 ```
+
+## plugin screenshot
+![plugin screenshot](https://github.com/user-attachments/assets/83408843-b970-4474-8637-5865eaba800d)
 
 ## Feedback
 - QQ Group: `981954623`
