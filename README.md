@@ -14,7 +14,8 @@
 - 支持创建每名玩家都可兑换一次的 CDK
 - 兼容 Folia 服务端
 - 支持 YAML、MySQL、SQLite 数据存储
-- 支持铁砧 GUI 输入 CDK（`/cdk anvil`）
+- 支持 铁砧 GUI 输入 CDK（`/cdk anvil`）
+- 支持 PlaceholderAPI 变量
 
 ## 指令与权限
 | 指令 | 介绍 | 权限 |
