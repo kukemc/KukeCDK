@@ -48,12 +48,9 @@ anvil_gui:
     red:
       material: "RED_STAINED_GLASS_PANE"
       name: "&c请输入CDK"
-      # 默认不显示lore，如需显示可自行添加
       lore: []
     green:
       material: "GREEN_STAINED_GLASS_PANE"
-      # 绿色名称由玩家输入CDK决定，此配置项将被忽略
-      # name: "&a点击确认"
       lore:
         - "&a点击确认"
   # 可选：为输入/红/绿物品设置 CustomModelData（如需使用自定义模型）
