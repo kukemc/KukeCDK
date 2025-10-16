@@ -38,5 +38,29 @@ failed_attempts:
 # 铁砧GUI设置（标题与物品文案支持PAPI变量与%player%）
 anvil_gui:
   title: "&bCDK兑换 - &f输入你的CDK"
+  # 左侧输入物品（材质、名称、lore 可自定义，支持PAPI）
+  input_item_material: "PAPER"
+  input_item_name: " "
   input_item_lore:
     - "&7在上方输入你的CDK"
+  # 右侧输出物品（红/绿状态可自定义，支持PAPI）
+  output:
+    red:
+      material: "RED_STAINED_GLASS_PANE"
+      name: "&c请输入CDK"
+      # 默认不显示lore，如需显示可自行添加
+      lore: []
+    green:
+      material: "GREEN_STAINED_GLASS_PANE"
+      # 绿色名称由玩家输入CDK决定，此配置项将被忽略
+      # name: "&a点击确认"
+      lore:
+        - "&a点击确认"
+  # 可选：为输入/红/绿物品设置 CustomModelData（如需使用自定义模型）
+  # 未设置或删除该键则不写入 CustomModelData
+  input_item_custom_model_data: 0
+  output:
+    red:
+      custom_model_data: 0
+    green:
+      custom_model_data: 0

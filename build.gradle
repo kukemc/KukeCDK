@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'su'
-version = '1.7-SNAPSHOT'
+version = 'v1.8'
 
 repositories {
     maven { 
@@ -44,6 +44,11 @@ repositories {
         name = "codemc-snapshots"
         url = "https://repo.codemc.io/repository/maven-snapshots/"
     }
+    // FoliaLib 官方仓库
+    maven {
+        name = "tcoded-releases"
+        url = "https://repo.tcoded.com/releases"
+    }
 }
 
 dependencies {
@@ -51,7 +56,8 @@ dependencies {
     implementation 'org.xerial:sqlite-jdbc:3.34.0'
     implementation 'mysql:mysql-connector-java:8.0.28'
     runtimeOnly 'net.wesjd:anvilgui:1.10.10-SNAPSHOT'
-    // implementation 'com.tcoded:FoliaLib:0.3.1'  // 暂时注释，网络问题
+    // 恢复 FoliaLib 以支持 Folia 服务器调度
+    implementation 'com.tcoded:FoliaLib:0.3.1'
 }
 
 // =============== Shadow 打包（重定位 AnvilGUI） ===============
@@ -60,7 +66,11 @@ shadowJar {
     archiveClassifier.set('')
     dependencies {
         include(dependency('net.wesjd:anvilgui'))
+        // 将 FoliaLib 一并打包，以避免服务器额外安装依赖
+        include(dependency('com.tcoded:FoliaLib'))
     }
+    // 建议对 FoliaLib 进行重定位，避免与其他插件发生包冲突
+    relocate 'com.tcoded.folialib', 'su.kukecdk.libs.folialib'
 }
 
 build {

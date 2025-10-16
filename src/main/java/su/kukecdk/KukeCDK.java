@@ -13,6 +13,8 @@ import su.kukecdk.manager.LogManager;
 import su.kukecdk.manager.FailedAttemptsManager;
 import su.kukecdk.metrics.Metrics;
 import su.kukecdk.gui.AnvilGUIManager;
+import su.kukecdk.update.UpdateService;
+import su.kukecdk.util.FoliaSupport;
 // import com.tcoded.folialib.FoliaLib;  // 暂时注释，网络问题
 
 import java.util.Arrays;
@@ -31,7 +33,9 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
     private FailedAttemptsManager failedAttemptsManager;
     private CDKCommandHandler commandHandler;
     private AnvilGUIManager anvilGUIManager;
+    private UpdateService updateService;
     // private FoliaLib foliaLib;  // 暂时注释，网络问题
+    private Object expiredCDKsTaskHandle;
 
     @Override
     public void onEnable() {
@@ -46,7 +50,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         getLogger().info("██╔═██╗ ██║   ██║██╔═██╗ ██╔══╝  ██║     ██║  ██║██╔═██╗ ");
         getLogger().info("██║  ██╗╚██████╔╝██║  ██╗███████╗╚██████╗██████╔╝██║  ██╗");
         getLogger().info("╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝╚═════╝ ╚═╝  ╚═╝");
-        getLogger().info("KukeCDK v" + getDescription().getVersion() + " by KukeMC");
+        getLogger().info("KukeCDK " + getDescription().getVersion() + " by KukeMC");
         getLogger().info("欢迎使用 KukeCDK");
 
         // 初始化FoliaLib
@@ -60,6 +64,9 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         failedAttemptsManager = new FailedAttemptsManager(this);
         commandHandler = new CDKCommandHandler(cdkManager, logManager, languageManager, failedAttemptsManager, getDataFolder());
         anvilGUIManager = new AnvilGUIManager(this, configManager.getConfig(), commandHandler);
+        // 启动更新检查并注册加入服务器提醒
+        updateService = new UpdateService(this);
+        updateService.init();
 
         // 注册命令和Tab补全
         getCommand("cdk").setExecutor(this);
@@ -68,14 +75,11 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         getCommand("cdk").setTabCompleter(tabCompleter);
         // 注册事件监听器（用于铁砧GUI）
         getServer().getPluginManager().registerEvents(anvilGUIManager, this);
+        // 注册更新提示监听器
+        getServer().getPluginManager().registerEvents(updateService, this);
 
-        // 注意：定期检查过期的CDK功能已暂时禁用以兼容Folia服务器
-        // Folia不支持传统的Bukkit调度器API，需要使用FoliaLib或手动触发清理
-        // 过期CDK将在玩家使用CDK时进行检查和清理
-
-        // 注意：定期清理失败尝试记录功能已暂时禁用以兼容Folia服务器
-        // Folia不支持传统的Bukkit调度器API，需要使用FoliaLib或手动触发清理
-        // 失败尝试记录将在插件重启时自动清理
+        // 恢复周期性过期CDK清理任务，适配 Folia/Spigot
+        schedulePeriodicTasks();
     }
     
     /**
@@ -86,6 +90,23 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         if (failedAttemptsManager != null) {
             // 可以添加日志记录或其他操作
         }
+    }
+
+    /** 恢复周期性任务（过期 CDK 清理） */
+    private void schedulePeriodicTasks() {
+        try {
+            // 每 5 分钟检查一次过期 CDK（300 秒）
+            long initialDelay = 20L * 60L; // 1 分钟后首次执行
+            long period = 20L * 300L; // 5 分钟周期
+            Runnable job = () -> {
+                try {
+                    if (cdkManager != null) cdkManager.removeExpiredCDKs();
+                } catch (Throwable ignored) {}
+            };
+            expiredCDKsTaskHandle = FoliaSupport.isFolia()
+                    ? FoliaSupport.runGlobalFixedRate(this, job, initialDelay, period)
+                    : FoliaSupport.runBukkitTimer(this, job, initialDelay, period);
+        } catch (Throwable ignored) {}
     }
     
 
@@ -102,6 +123,8 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         if (failedAttemptsManager != null) {
             failedAttemptsManager.saveConfig();
         }
+        // 取消周期任务
+        try { FoliaSupport.cancel(expiredCDKsTaskHandle); } catch (Throwable ignored) {}
         getLogger().info("KukeCDK 已卸载");
     }
 
