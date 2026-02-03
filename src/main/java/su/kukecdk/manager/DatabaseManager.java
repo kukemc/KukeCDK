@@ -25,6 +25,22 @@ public class DatabaseManager {
     }
 
     /**
+     * 检查并维护数据库连接
+     */
+    private void checkConnection() {
+        try {
+            if (connection == null || connection.isClosed() || !connection.isValid(2)) {
+                plugin.getLogger().info("数据库连接已断开，正在重新连接...");
+                initDatabase();
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().severe("检查数据库连接时出错: " + e.getMessage());
+            // 尝试重新初始化
+            initDatabase();
+        }
+    }
+
+    /**
      * 初始化数据库连接
      */
     private void initDatabase() {
@@ -42,7 +58,9 @@ public class DatabaseManager {
                 String database = config.getString("mysql.database", "kukecdk");
                 String username = config.getString("mysql.username", "root");
                 String password = config.getString("mysql.password", "password");
-                String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true";
+                // 添加 autoReconnect=true 这是一个旧参数，但在某些驱动版本有效。
+                // 最重要的是代码层面的重连。
+                String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&autoReconnect=true";
                 connection = DriverManager.getConnection(url, username, password);
             }
             createTables();
@@ -65,20 +83,22 @@ public class DatabaseManager {
             
             if ("mysql".equalsIgnoreCase(storageMode)) {
                 // MySQL使用VARCHAR类型以支持PRIMARY KEY
+                // 缩短VARCHAR长度以兼容utf8mb4编码下的索引限制 (767 bytes)
                 createCDKTableSQL = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "cdk (" +
-                        "id VARCHAR(255) NOT NULL, " +
-                        "name VARCHAR(255) NOT NULL PRIMARY KEY, " +
+                        "id VARCHAR(128) NOT NULL, " +
+                        "name VARCHAR(128) NOT NULL, " +
                         "quantity INTEGER NOT NULL, " +
                         "single_use BOOLEAN NOT NULL, " +
                         "commands TEXT NOT NULL, " +
-                        "expiration_date VARCHAR(255)" +
-                        ");";
+                        "expiration_date VARCHAR(64), " +
+                        "PRIMARY KEY (name)" +
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
                 
                 createRedeemedPlayersTableSQL = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "redeemed_players (" +
-                        "cdk_name VARCHAR(255) NOT NULL, " +
-                        "player_name VARCHAR(255) NOT NULL, " +
+                        "cdk_name VARCHAR(128) NOT NULL, " +
+                        "player_name VARCHAR(60) NOT NULL, " +
                         "PRIMARY KEY (cdk_name, player_name)" +
-                        ");";
+                        ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
             } else {
                 // SQLite使用TEXT类型
                 createCDKTableSQL = "CREATE TABLE IF NOT EXISTS " + tablePrefix + "cdk (" +
@@ -113,6 +133,7 @@ public class DatabaseManager {
      * @return 包含所有CDK的映射
      */
     public Map<String, Map<String, CDK>> loadCDKs() {
+        checkConnection();
         Map<String, Map<String, CDK>> cdkMap = new HashMap<>();
         
         try {
@@ -179,27 +200,83 @@ public class DatabaseManager {
      * @param cdkMap 要保存的CDK映射
      */
     public void saveCDKs(Map<String, Map<String, CDK>> cdkMap) {
+        checkConnection();
         try {
             String tablePrefix = "mysql".equalsIgnoreCase(storageMode) ? config.getString("mysql.table_prefix", "kukecdk_") : "";
-            
+            boolean isMysql = "mysql".equalsIgnoreCase(storageMode);
+
+            // 1. 获取数据库中现有的所有CDK名称
+            Set<String> dbCDKNames = new HashSet<>();
+            // 检查表是否存在，防止首次运行报错（虽然initDatabase已创建，但防万一）
+            try {
+                try (Statement stmt = connection.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT name FROM " + tablePrefix + "cdk")) {
+                    while (rs.next()) {
+                        dbCDKNames.add(rs.getString("name"));
+                    }
+                }
+            } catch (SQLException e) {
+                // 如果查询失败，可能是表不存在，尝试重新创建
+                createTables();
+                // 再次尝试查询，如果还失败则抛出异常
+                try (Statement stmt = connection.createStatement();
+                     ResultSet rs = stmt.executeQuery("SELECT name FROM " + tablePrefix + "cdk")) {
+                    while (rs.next()) {
+                        dbCDKNames.add(rs.getString("name"));
+                    }
+                }
+            }
+
+            // 2. 收集内存中所有的CDK名称
+            Set<String> memoryCDKNames = new HashSet<>();
+            for (Map<String, CDK> map : cdkMap.values()) {
+                memoryCDKNames.addAll(map.keySet());
+            }
+
+            // 3. 计算需要删除的CDK (数据库中有但内存中没有的)
+            Set<String> toDelete = new HashSet<>(dbCDKNames);
+            toDelete.removeAll(memoryCDKNames);
+
             // 开始事务
             connection.setAutoCommit(false);
-            
-            // 清空现有数据
-            try (Statement statement = connection.createStatement()) {
-                statement.execute("DELETE FROM " + tablePrefix + "cdk");
-                statement.execute("DELETE FROM " + tablePrefix + "redeemed_players");
+
+            // 4. 删除多余的CDK
+            if (!toDelete.isEmpty()) {
+                String deleteCdkSQL = "DELETE FROM " + tablePrefix + "cdk WHERE name = ?";
+                String deletePlayerSQL = "DELETE FROM " + tablePrefix + "redeemed_players WHERE cdk_name = ?";
+                try (PreparedStatement psCdk = connection.prepareStatement(deleteCdkSQL);
+                     PreparedStatement psPlayer = connection.prepareStatement(deletePlayerSQL)) {
+                    for (String name : toDelete) {
+                        psCdk.setString(1, name);
+                        psCdk.addBatch();
+                        psPlayer.setString(1, name);
+                        psPlayer.addBatch();
+                    }
+                    psCdk.executeBatch();
+                    psPlayer.executeBatch();
+                }
             }
             
-            // 插入新的CDK数据
-            String insertCDKSQL = "INSERT INTO " + tablePrefix + "cdk (id, name, quantity, single_use, commands, expiration_date) VALUES (?, ?, ?, ?, ?, ?)";
+            // 5. 更新或插入CDK
+            String upsertCDKSQL;
+            if (isMysql) {
+                upsertCDKSQL = "INSERT INTO " + tablePrefix + "cdk (id, name, quantity, single_use, commands, expiration_date) VALUES (?, ?, ?, ?, ?, ?) " +
+                        "ON DUPLICATE KEY UPDATE quantity=VALUES(quantity), single_use=VALUES(single_use), commands=VALUES(commands), expiration_date=VALUES(expiration_date)";
+            } else {
+                upsertCDKSQL = "INSERT OR REPLACE INTO " + tablePrefix + "cdk (id, name, quantity, single_use, commands, expiration_date) VALUES (?, ?, ?, ?, ?, ?)";
+            }
+
+            // 对于 redeemed_players，简单起见，先删除该CDK的记录再插入新的
+            String deleteCDKPlayersSQL = "DELETE FROM " + tablePrefix + "redeemed_players WHERE cdk_name = ?";
             String insertPlayerSQL = "INSERT INTO " + tablePrefix + "redeemed_players (cdk_name, player_name) VALUES (?, ?)";
-            
-            try (PreparedStatement cdkStatement = connection.prepareStatement(insertCDKSQL);
-                 PreparedStatement playerStatement = connection.prepareStatement(insertPlayerSQL)) {
+
+            try (PreparedStatement cdkStatement = connection.prepareStatement(upsertCDKSQL);
+                 PreparedStatement delPlayersStmt = connection.prepareStatement(deleteCDKPlayersSQL);
+                 PreparedStatement insPlayersStmt = connection.prepareStatement(insertPlayerSQL)) {
                 
                 for (Map.Entry<String, Map<String, CDK>> entry : cdkMap.entrySet()) {
                     for (CDK cdk : entry.getValue().values()) {
+                        // Upsert CDK
                         cdkStatement.setString(1, cdk.getId());
                         cdkStatement.setString(2, cdk.getName());
                         cdkStatement.setInt(3, cdk.getQuantity());
@@ -208,13 +285,19 @@ public class DatabaseManager {
                         cdkStatement.setString(6, cdk.getExpirationDate() != null ? dateFormat.format(cdk.getExpirationDate()) : null);
                         cdkStatement.executeUpdate();
                         
-                        // 保存已兑换玩家列表
-                        if (cdk.getRedeemedPlayers() != null) {
+                        // 更新玩家列表
+                        // 先删除旧的
+                        delPlayersStmt.setString(1, cdk.getName());
+                        delPlayersStmt.executeUpdate();
+
+                        // 插入新的
+                        if (cdk.getRedeemedPlayers() != null && !cdk.getRedeemedPlayers().isEmpty()) {
                             for (String playerName : cdk.getRedeemedPlayers()) {
-                                playerStatement.setString(1, cdk.getName());
-                                playerStatement.setString(2, playerName);
-                                playerStatement.executeUpdate();
+                                insPlayersStmt.setString(1, cdk.getName());
+                                insPlayersStmt.setString(2, playerName);
+                                insPlayersStmt.addBatch();
                             }
+                            insPlayersStmt.executeBatch();
                         }
                     }
                 }

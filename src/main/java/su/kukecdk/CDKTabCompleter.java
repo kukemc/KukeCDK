@@ -35,9 +35,6 @@ public class CDKTabCompleter implements TabCompleter {
                 if (args[0].isEmpty() || "use".startsWith(args[0].toLowerCase())) {
                     completions.add("use");
                 }
-                if (args[0].isEmpty() || "verify".startsWith(args[0].toLowerCase())) {
-                    completions.add("verify");
-                }
                 if (args[0].isEmpty() || "anvil".startsWith(args[0].toLowerCase())) {
                     completions.add("anvil");
                 }
@@ -68,7 +65,7 @@ public class CDKTabCompleter implements TabCompleter {
                     break;
                 case "use":
                 case "verify":
-                    handleUseVerifyCompletion(args, completions);
+                    handleUseVerifyCompletion(sender, args, completions);
                     break;
                 case "help":
                     // help命令不需要额外参数
@@ -291,13 +288,18 @@ public class CDKTabCompleter implements TabCompleter {
         }
     }
 
-    private void handleUseVerifyCompletion(String[] args, List<String> completions) {
+    private void handleUseVerifyCompletion(CommandSender sender, String[] args, List<String> completions) {
         String subCommand = args[0].toLowerCase();
         
         if ("use".equals(subCommand)) {
             // cdk use 指令不应该提供任何tab补全
             return;
         } else if ("verify".equals(subCommand)) {
+            // 检查权限
+            if (!sender.hasPermission("kukecdk.admin.verify")) {
+                return;
+            }
+
             // verify 指令可以补全CDK名称
             if (args.length == 2 && cdkManager != null) {
                 // 添加已存在的CDK名称列表
@@ -316,7 +318,7 @@ public class CDKTabCompleter implements TabCompleter {
     }
 
     private final List<String> ADMIN_COMMANDS = Arrays.asList(
-            "create", "add", "delete", "list", "reload", "export", "migrate"
+            "create", "add", "delete", "list", "reload", "export", "migrate", "verify"
     );
     
     private final List<String> MIGRATE_OPTIONS = Arrays.asList(

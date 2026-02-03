@@ -23,6 +23,9 @@ permissions:
   kukecdk.admin.list:
     description: 允许玩家查看 CDK 列表
     default: op
+  kukecdk.admin.verify:
+    description: 允许玩家验证 CDK
+    default: op
   kukecdk.admin.reload:
     description: 允许玩家重新加载 CDK 配置
     default: op

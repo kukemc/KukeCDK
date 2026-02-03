@@ -144,6 +144,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
             case "reload":
             case "export":
             case "migrate":
+            case "verify":
                 // 检查管理员权限
                 if (!sender.hasPermission("kukecdk.admin." + args[0].toLowerCase())) {
                     sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("no_permission"));
@@ -151,7 +152,6 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
                 }
                 break;
             case "use":
-            case "verify":
             case "anvil":
                 // 检查使用权限
                 if (!sender.hasPermission("kukecdk.use")) {

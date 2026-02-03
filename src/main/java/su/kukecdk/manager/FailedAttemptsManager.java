@@ -172,6 +172,6 @@ public class FailedAttemptsManager {
      * @return 配置值
      */
     public <T> T getConfigValue(String path, T def) {
-        return (T) config.get(path, def);
+        return (T) plugin.getConfig().get(path, def);
     }
 }
