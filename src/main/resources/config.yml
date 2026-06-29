@@ -49,15 +49,57 @@ anvil_gui:
       material: "RED_STAINED_GLASS_PANE"
       name: "&c请输入CDK"
       lore: []
+      custom_model_data: 0
     green:
       material: "GREEN_STAINED_GLASS_PANE"
       lore:
         - "&a点击确认"
+      custom_model_data: 0
   # 可选：为输入/红/绿物品设置 CustomModelData（如需使用自定义模型）
   # 未设置或删除该键则不写入 CustomModelData
   input_item_custom_model_data: 0
-  output:
-    red:
-      custom_model_data: 0
-    green:
-      custom_model_data: 0
+  
+
+# HTTP API 服务设置
+api:
+  # 是否启用内置 API 服务
+  enabled: false
+  # 默认只监听本机。公网访问建议保持 127.0.0.1，并使用 Nginx/Caddy 反代 HTTPS。
+  host: "127.0.0.1"
+  # API 服务端口
+  port: 8765
+  # REST API 基础路径
+  base_path: "/api/v1"
+  # 内置 API 文档页面路径。启用 API 后访问 http://host:port/docs 查看详细文档。
+  docs_path: "/docs"
+  # 最大请求体大小，单位字节
+  max_body_bytes: 1048576
+  cors:
+    enabled: false
+    allowed_origins:
+      - "*"
+  auth:
+    enabled: true
+    tokens:
+      - name: "admin"
+        token: "change-me-admin-token"
+        scopes:
+          - "*"
+      - name: "readonly"
+        token: "change-me-readonly-token"
+        scopes:
+          - "server:read"
+          - "cdk:read"
+          - "log:read"
+  # IP 白名单。留空表示不限制，公网绑定时不要留空；默认只允许本机。
+  ip_allowlist:
+    - "127.0.0.1"
+    - "0:0:0:0:0:0:0:1"
+    - "::1"
+  rate_limit:
+    enabled: true
+    requests_per_minute: 120
+  audit:
+    enabled: true
+    log_success: true
+    log_failed_auth: true

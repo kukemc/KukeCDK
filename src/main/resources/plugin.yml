@@ -32,3 +32,6 @@ permissions:
   kukecdk.admin.export:
     description: 允许玩家导出 CDK 配置
     default: op
+  kukecdk.admin.migrate:
+    description: 允许玩家迁移 CDK 存储数据
+    default: op

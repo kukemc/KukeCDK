@@ -8,8 +8,8 @@ no_permission_use: "§cYou don't have permission to use this CDK!"
 
 # Help information
 help_header: "§6===== §e§lKukeCDK Help §6=====&r"
-help_create: "§b/cdk create single <id> <quantity> \"<command1|command2|...>\" [expiration] §7- Create a one-time CDK"
-help_create_multiple: "§b/cdk create multiple <name|random> <id> <quantity> \"<command1|command2|...>\" [expiration] §7- Create a reusable CDK"
+help_create: "§b/cdk create single <id> <quantity> \"<command1|command2|...>\" [expiration] [--permission <permission>] [--group <group>] §7- Create a one-time CDK"
+help_create_multiple: "§b/cdk create multiple <name|random> <id> <quantity> \"<command1|command2|...>\" [expiration] [--permission <permission>] [--group <group>] §7- Create a reusable CDK"
 help_add: "§b/cdk add <id> <quantity> §7- Batch generate/increase usage count"
 help_delete: "§b/cdk delete <cdk|id> <content> §7- Delete CDK/delete all CDKs under this id"
 help_list: "§b/cdk list §7- List all CDKs"
@@ -22,8 +22,8 @@ help_migrate: "§b/cdk migrate <source> <target> §7- Migrate data between stora
 help_footer: "§6========================="
 
 # Create CDK related messages
-create_usage_single: "§cUsage: /cdk create single <id> <quantity> \"<command1|command2|...>\" [expiration]"
-create_usage_multiple: "§cUsage: /cdk create multiple <name|random> <id> <quantity> \"<command1|command2|...>\" [expiration]"
+create_usage_single: "§cUsage: /cdk create single <id> <quantity> \"<command1|command2|...>\" [expiration] [--permission <permission>] [--group <group>]"
+create_usage_multiple: "§cUsage: /cdk create multiple <name|random> <id> <quantity> \"<command1|command2|...>\" [expiration] [--permission <permission>] [--group <group>]"
 create_example_single: "§cExample: /cdk create single Exchange1Diamond 5 \"give %player% diamond 1\" 2024-12-01 10:00"
 create_example_multiple: "§cExample: /cdk create multiple vip666 Exchange10Diamond 999 \"give %player% diamond 10\" 2024-12-01 10:00"
 invalid_quantity: "§cQuantity must be a valid number!"
@@ -46,6 +46,7 @@ cdk_not_found: "§cCDK §e%cdk% §cdoes not exist!"
 # List related messages
 list_header: "§6===== §bCDK List §6=====&r"
 list_item: "§b%cdk% §7- §a%id% §7- §e%commands% §7- §c%expiration%"
+list_condition: "§7Use conditions: §e%conditions%"
 list_empty: "§cThere are no CDKs!"
 list_footer: "§6===================="
 
@@ -63,6 +64,11 @@ use_success: "§aSuccessfully used CDK: §e%cdk%§a!"
 cdk_expired: "§cCDK §e%cdk% §chas expired!"
 cdk_already_used: "§cYou have already used this CDK!"
 cdk_not_found_with_attempts: "§cCDK §e%cdk% §cdoes not exist! Failed attempts: §e%attempts%§c, Remaining attempts: §e%remaining%"
+cdk_condition_not_met: "§cYou do not meet this CDK's use conditions!"
+cdk_required_permission: "§7Required permission: §e%permission%"
+cdk_required_group: "§7Required group: §e%group%"
+condition_permission: "permission %permission%"
+condition_group: "group %group%"
 
 # Verify CDK related messages
 verify_usage: "§cUsage: /cdk verify <CDK>"
@@ -74,6 +80,8 @@ verify_expiry_info: "§7Expiry date: §e%date%"
 verify_no_expiry: "§7No expiry date"
 verify_single_use: "§7Type: §eSingle use"
 verify_quantity_info: "§7Remaining uses: §e%quantity%"
+verify_condition_met: "§7Use conditions: §aMet"
+verify_condition_not_met: "§7Use conditions: §cNot met"
 
 # Migration command related messages
 migrate_usage: "§cUsage: /cdk migrate <yaml|sqlite|mysql> <yaml|sqlite|mysql> [confirm]"

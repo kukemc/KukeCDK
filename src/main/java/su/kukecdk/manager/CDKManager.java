@@ -43,9 +43,17 @@ public class CDKManager {
     }
 
     /**
+     * 获取插件实例
+     * @return JavaPlugin 插件实例
+     */
+    public JavaPlugin getPlugin() {
+        return plugin;
+    }
+
+    /**
      * 加载CDK配置
      */
-    public void loadCDKs() {
+    public synchronized void loadCDKs() {
         if ("sqlite".equalsIgnoreCase(storageMode) || "mysql".equalsIgnoreCase(storageMode)) {
             // 从数据库加载
             cdkMap.clear();
@@ -69,6 +77,8 @@ public class CDKManager {
                     int quantity = cdkConfig.getInt(id + "." + cdkName + ".quantity");
                     boolean isSingleUse = cdkConfig.getBoolean(id + "." + cdkName + ".single");
                     String commands = cdkConfig.getString(id + "." + cdkName + ".commands");
+                    String requiredPermission = cdkConfig.getString(id + "." + cdkName + ".requiredPermission");
+                    String requiredGroup = cdkConfig.getString(id + "." + cdkName + ".requiredGroup");
                     Date expirationDate = null;
 
                     String dateStr = cdkConfig.getString(id + "." + cdkName + ".expiration");
@@ -80,7 +90,7 @@ public class CDKManager {
                         }
                     }
 
-                    CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate);
+                    CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate, requiredPermission, requiredGroup);
                     
                     // 加载已兑换玩家列表
                     List<String> redeemedPlayersList = cdkConfig.getStringList(id + "." + cdkName + ".redeemedPlayers");
@@ -101,7 +111,7 @@ public class CDKManager {
     /**
      * 保存CDK配置
      */
-    public void saveCDKs() {
+    public synchronized void saveCDKs() {
         if ("sqlite".equalsIgnoreCase(storageMode) || "mysql".equalsIgnoreCase(storageMode)) {
             // 保存到数据库
             databaseManager.saveCDKs(cdkMap);
@@ -116,6 +126,8 @@ public class CDKManager {
                     cdkConfig.set(basePath + ".quantity", cdk.getQuantity());
                     cdkConfig.set(basePath + ".single", cdk.isSingleUse());
                     cdkConfig.set(basePath + ".commands", cdk.getCommands());
+                    cdkConfig.set(basePath + ".requiredPermission", cdk.getRequiredPermission());
+                    cdkConfig.set(basePath + ".requiredGroup", cdk.getRequiredGroup());
                     if (cdk.getExpirationDate() != null) {
                         cdkConfig.set(basePath + ".expiration", new SimpleDateFormat("yyyy-MM-dd HH:mm").format(cdk.getExpirationDate()));
                     }
@@ -132,6 +144,7 @@ public class CDKManager {
             } catch (IOException e) {
                 plugin.getLogger().severe("保存 CDK 文件时出错！");
                 e.printStackTrace();
+                throw new RuntimeException("保存 CDK 文件时出错", e);
             }
         }
     }
@@ -139,7 +152,7 @@ public class CDKManager {
     /**
      * 移除过期的CDK
      */
-    public void removeExpiredCDKs() {
+    public synchronized void removeExpiredCDKs() {
         for (Map<String, CDK> cdkGroup : cdkMap.values()) {
             cdkGroup.values().removeIf(CDK::isExpired);
         }
@@ -151,11 +164,21 @@ public class CDKManager {
      *
      * @return 随机生成的CDK名称
      */
-    public String generateUniqueRandomCDKName() {
+    public synchronized String generateUniqueRandomCDKName() {
         String cdkName;
+        int maxAttempts = 1000;
+        int attempts = 0;
         do {
             cdkName = generateRandomCDKName();
-        } while (cdkMap.containsKey(cdkName)); // 避免冲突
+            attempts++;
+            if (attempts > maxAttempts) {
+                // 如果碰撞次数过多，自动增加名称长度以降低碰撞率
+                int currentLength = config.getInt("default_cdk_name_length", 8);
+                config.set("default_cdk_name_length", currentLength + 1);
+                plugin.getLogger().warning("CDK名称碰撞次数过多，自动将默认长度增加至 " + (currentLength + 1));
+                attempts = 0;
+            }
+        } while (findCDKByName(cdkName) != null); // 全局范围避免冲突
         return cdkName;
     }
 
@@ -168,7 +191,7 @@ public class CDKManager {
         int length = config.getInt("default_cdk_name_length", 8);
         String characters = config.getString("default_cdk_characters", "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
         StringBuilder result = new StringBuilder(length);
-        Random random = new Random();
+        java.util.concurrent.ThreadLocalRandom random = java.util.concurrent.ThreadLocalRandom.current();
         for (int i = 0; i < length; i++) {
             result.append(characters.charAt(random.nextInt(characters.length())));
         }
@@ -185,9 +208,31 @@ public class CDKManager {
      * @param commands 兑换时执行的命令
      * @param expirationDate 过期时间
      * @return 创建的CDK对象
+     * @throws IllegalArgumentException 如果CDK名称已存在
      */
-    public CDK createCDK(String id, String name, int quantity, boolean isSingleUse, String commands, Date expirationDate) {
-        CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate);
+    public synchronized CDK createCDK(String id, String name, int quantity, boolean isSingleUse, String commands, Date expirationDate) {
+        return createCDK(id, name, quantity, isSingleUse, commands, expirationDate, null, null);
+    }
+
+    /**
+     * 创建一个新的CDK
+     *
+     * @param id CDK的ID
+     * @param name CDK的名称
+     * @param quantity CDK的数量
+     * @param isSingleUse 是否为一次性使用
+     * @param commands 兑换时执行的命令
+     * @param expirationDate 过期时间
+     * @param requiredPermission 兑换所需权限
+     * @param requiredGroup 兑换所需权限组
+     * @return 创建的CDK对象
+     * @throws IllegalArgumentException 如果CDK名称已存在
+     */
+    public synchronized CDK createCDK(String id, String name, int quantity, boolean isSingleUse, String commands, Date expirationDate, String requiredPermission, String requiredGroup) {
+        if (findCDKByName(name) != null) {
+            throw new IllegalArgumentException("CDK名称已存在: " + name);
+        }
+        CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate, requiredPermission, requiredGroup);
         cdkMap.computeIfAbsent(id, k -> new HashMap<>()).put(name, cdk);
         saveCDKs();
         return cdk;
@@ -199,7 +244,7 @@ public class CDKManager {
      * @param id CDK的ID
      * @return 如果删除成功则返回true，否则返回false
      */
-    public boolean deleteById(String id) {
+    public synchronized boolean deleteById(String id) {
         if (cdkMap.containsKey(id)) {
             cdkMap.remove(id);
             saveCDKs();
@@ -214,7 +259,7 @@ public class CDKManager {
      * @param cdkName CDK的名称
      * @return 如果删除成功则返回true，否则返回false
      */
-    public boolean deleteByCDKName(String cdkName) {
+    public synchronized boolean deleteByCDKName(String cdkName) {
         for (Map.Entry<String, Map<String, CDK>> entry : cdkMap.entrySet()) {
             if (entry.getValue().containsKey(cdkName)) {
                 entry.getValue().remove(cdkName);
@@ -231,7 +276,7 @@ public class CDKManager {
      * @param cdkName CDK的名称
      * @return 找到的CDK对象，如果未找到则返回null
      */
-    public CDK findCDKByName(String cdkName) {
+    public synchronized CDK findCDKByName(String cdkName) {
         for (Map<String, CDK> cdkGroup : cdkMap.values()) {
             if (cdkGroup.containsKey(cdkName)) {
                 return cdkGroup.get(cdkName);
@@ -246,8 +291,9 @@ public class CDKManager {
      * @param id CDK的ID
      * @return 找到的CDK组，如果未找到则返回null
      */
-    public Map<String, CDK> findCDKGroupById(String id) {
-        return cdkMap.get(id);
+    public synchronized Map<String, CDK> findCDKGroupById(String id) {
+        Map<String, CDK> group = cdkMap.get(id);
+        return group == null ? null : new HashMap<>(group);
     }
 
     /**
@@ -255,8 +301,113 @@ public class CDKManager {
      *
      * @return 所有CDK的映射
      */
-    public Map<String, Map<String, CDK>> getAllCDKs() {
-        return cdkMap;
+    public synchronized Map<String, Map<String, CDK>> getAllCDKs() {
+        Map<String, Map<String, CDK>> copy = new HashMap<>();
+        for (Map.Entry<String, Map<String, CDK>> entry : cdkMap.entrySet()) {
+            copy.put(entry.getKey(), new HashMap<>(entry.getValue()));
+        }
+        return copy;
+    }
+
+    public synchronized boolean updateCDK(String name, Integer quantity, String commands, Date expirationDate, boolean updateExpiration, String requiredPermission, boolean updatePermission, String requiredGroup, boolean updateGroup) {
+        CDK cdk = findCDKByName(name);
+        if (cdk == null) return false;
+        if (quantity != null) cdk.setQuantity(quantity);
+        if (commands != null) cdk.setCommands(commands);
+        if (updateExpiration) cdk.setExpirationDate(expirationDate);
+        if (updatePermission) cdk.setRequiredPermission(requiredPermission);
+        if (updateGroup) cdk.setRequiredGroup(requiredGroup);
+        saveCDKs();
+        return true;
+    }
+
+    public synchronized int countCDKs() {
+        int count = 0;
+        for (Map<String, CDK> group : cdkMap.values()) count += group.size();
+        return count;
+    }
+
+    public synchronized RedemptionResult redeemForApi(String cdkName, String playerName, boolean conditionMet) {
+        CDK cdk = findCDKByName(cdkName);
+        if (cdk == null) {
+            return RedemptionResult.error("CDK_NOT_FOUND", "CDK not found");
+        }
+        if (cdk.isExpired()) {
+            return RedemptionResult.error("CDK_EXPIRED", "CDK is expired");
+        }
+        if (cdk.hasPlayerRedeemed(playerName)) {
+            return RedemptionResult.error("ALREADY_REDEEMED", "Player already redeemed this CDK");
+        }
+        if (cdk.hasUseConditions() && !conditionMet) {
+            return RedemptionResult.error("CONDITION_NOT_MET", "Player does not meet CDK use conditions");
+        }
+
+        String commands = cdk.getCommands();
+        int oldQuantity = cdk.getQuantity();
+        boolean alreadyContained = cdk.getRedeemedPlayers().contains(playerName);
+        boolean removed = false;
+        cdk.decreaseQuantity();
+        cdk.addRedeemedPlayer(playerName);
+        int remainingQuantity = Math.max(0, cdk.getQuantity());
+        if (cdk.isSingleUse() || cdk.getQuantity() <= 0) {
+            removeCDKWithoutSave(cdkName);
+            removed = true;
+            remainingQuantity = 0;
+        }
+        try {
+            saveCDKs();
+        } catch (RuntimeException e) {
+            if (removed) {
+                cdkMap.computeIfAbsent(cdk.getId(), k -> new HashMap<>()).put(cdk.getName(), cdk);
+            }
+            cdk.setQuantity(oldQuantity);
+            if (!alreadyContained) {
+                cdk.getRedeemedPlayers().remove(playerName);
+            }
+            throw e;
+        }
+        return RedemptionResult.success(cdk, commands, remainingQuantity);
+    }
+
+    private void removeCDKWithoutSave(String cdkName) {
+        for (Map<String, CDK> group : cdkMap.values()) {
+            if (group.remove(cdkName) != null) {
+                return;
+            }
+        }
+    }
+
+    public static class RedemptionResult {
+        private final boolean success;
+        private final String code;
+        private final String message;
+        private final CDK cdk;
+        private final String commands;
+        private final int remainingQuantity;
+
+        private RedemptionResult(boolean success, String code, String message, CDK cdk, String commands, int remainingQuantity) {
+            this.success = success;
+            this.code = code;
+            this.message = message;
+            this.cdk = cdk;
+            this.commands = commands;
+            this.remainingQuantity = remainingQuantity;
+        }
+
+        public static RedemptionResult success(CDK cdk, String commands, int remainingQuantity) {
+            return new RedemptionResult(true, null, null, cdk, commands, remainingQuantity);
+        }
+
+        public static RedemptionResult error(String code, String message) {
+            return new RedemptionResult(false, code, message, null, null, 0);
+        }
+
+        public boolean isSuccess() { return success; }
+        public String getCode() { return code; }
+        public String getMessage() { return message; }
+        public CDK getCdk() { return cdk; }
+        public String getCommands() { return commands; }
+        public int getRemainingQuantity() { return remainingQuantity; }
     }
 
     /**
@@ -264,7 +415,7 @@ public class CDKManager {
      *
      * @param config 新的配置
      */
-    public void updateConfig(FileConfiguration config) {
+    public synchronized void updateConfig(FileConfiguration config) {
         this.config = config;
         this.storageMode = config.getString("storage_mode", "yaml");
         
@@ -390,6 +541,8 @@ public class CDKManager {
                         int quantity = yamlConfig.getInt(id + "." + cdkName + ".quantity");
                         boolean isSingleUse = yamlConfig.getBoolean(id + "." + cdkName + ".single");
                         String commands = yamlConfig.getString(id + "." + cdkName + ".commands");
+                        String requiredPermission = yamlConfig.getString(id + "." + cdkName + ".requiredPermission");
+                        String requiredGroup = yamlConfig.getString(id + "." + cdkName + ".requiredGroup");
                         Date expirationDate = null;
 
                         String dateStr = yamlConfig.getString(id + "." + cdkName + ".expiration");
@@ -401,7 +554,7 @@ public class CDKManager {
                             }
                         }
 
-                        CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate);
+                        CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate, requiredPermission, requiredGroup);
                         
                         // 加载已兑换玩家列表
                         List<String> redeemedPlayersList = yamlConfig.getStringList(id + "." + cdkName + ".redeemedPlayers");

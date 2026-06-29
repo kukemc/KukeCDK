@@ -7,6 +7,10 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 
 /**
  * 通过反射适配 Folia 与 Spigot/Paper 的调度差异。
@@ -68,6 +72,77 @@ public final class FoliaSupport {
             return runAtFixedRate.invoke(grs, plugin, consumer, initialDelayTicks, periodTicks);
         } catch (Throwable t) {
             return runBukkitTimer(plugin, runnable, initialDelayTicks, periodTicks);
+        }
+    }
+
+    /**
+     * 在 Folia 的全局区域调度器上运行一次性任务（立即执行），否则退回 BukkitScheduler。
+     */
+    public static void runGlobal(JavaPlugin plugin, Runnable runnable) {
+        if (!isFolia()) {
+            Bukkit.getScheduler().runTask(plugin, runnable);
+            return;
+        }
+        try {
+            Method getGRS = Bukkit.class.getMethod("getGlobalRegionScheduler");
+            Object grs = getGRS.invoke(null);
+            
+            // Try execute(Plugin, Runnable)
+            try {
+                Method execute = grs.getClass().getMethod("execute", org.bukkit.plugin.Plugin.class, Runnable.class);
+                execute.invoke(grs, plugin, runnable);
+                return;
+            } catch (NoSuchMethodException ignored) {
+                // If execute is not found, try run(Plugin, Consumer<ScheduledTask>)
+            }
+
+            // Fallback to run(Plugin, Consumer<ScheduledTask>)
+            Method runMethod = null;
+            for (Method m : grs.getClass().getMethods()) {
+                if (m.getName().equals("run") && m.getParameterCount() == 2) {
+                    Class<?>[] p = m.getParameterTypes();
+                    if (org.bukkit.plugin.Plugin.class.isAssignableFrom(p[0]) && p[1].getName().contains("Consumer")) {
+                        runMethod = m;
+                        break;
+                    }
+                }
+            }
+            
+            if (runMethod != null) {
+                Class<?> consumerClass = runMethod.getParameterTypes()[1];
+                Object consumer = Proxy.newProxyInstance(
+                        consumerClass.getClassLoader(),
+                        new Class<?>[]{consumerClass},
+                        (proxy, method, args) -> {
+                            if ("accept".equals(method.getName())) {
+                                runnable.run();
+                            }
+                            return null;
+                        }
+                );
+                runMethod.invoke(grs, plugin, consumer);
+            } else {
+                 Bukkit.getScheduler().runTask(plugin, runnable);
+            }
+        } catch (Throwable t) {
+            t.printStackTrace();
+            Bukkit.getScheduler().runTask(plugin, runnable);
+        }
+    }
+
+    public static <T> T callGlobal(JavaPlugin plugin, Supplier<T> supplier, long timeoutMillis) throws Exception {
+        CompletableFuture<T> future = new CompletableFuture<>();
+        runGlobal(plugin, () -> {
+            try {
+                future.complete(supplier.get());
+            } catch (Throwable t) {
+                future.completeExceptionally(t);
+            }
+        });
+        try {
+            return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            throw new TimeoutException("Timed out waiting for server thread task");
         }
     }
 

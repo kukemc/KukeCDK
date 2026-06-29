@@ -16,6 +16,7 @@
 - 支持 YAML、MySQL、SQLite 数据存储
 - 支持 铁砧 GUI 输入 CDK（`/cdk anvil`）
 - 支持 PlaceholderAPI 变量
+- 支持可选 HTTP API 服务，内置详细 API 文档页面
 
 ## 指令与权限
 | 指令 | 介绍 | 权限 |
@@ -98,6 +99,58 @@ anvil_gui:
   input_item_lore:
     - "&7在上方输入你的CDK"
 ```
+
+## HTTP API 服务
+
+KukeCDK 支持内置 HTTP API 服务，默认关闭。启用后可以通过 REST API 管理、查询、验证和兑换 CDK，并在本地提供详细文档页面。
+
+默认文档地址：
+
+```text
+http://127.0.0.1:8765/docs
+```
+
+基础配置：
+
+```yaml
+api:
+  enabled: false
+  host: "127.0.0.1"
+  port: 8765
+  base_path: "/api/v1"
+  docs_path: "/docs"
+  auth:
+    enabled: true
+    tokens:
+      - name: "admin"
+        token: "change-me-admin-token"
+        scopes:
+          - "*"
+```
+
+鉴权方式：
+
+```http
+Authorization: Bearer change-me-admin-token
+```
+
+常用接口：
+
+| 接口 | 说明 | Scope |
+| --- | --- | --- |
+| `GET /api/v1/health` | 健康检查 | `server:read` |
+| `GET /api/v1/stats` | CDK 统计 | `server:read` |
+| `GET /api/v1/cdks` | CDK 列表 | `cdk:read` |
+| `GET /api/v1/cdks/{name}` | 查询指定 CDK | `cdk:read` |
+| `POST /api/v1/cdks` | 创建 CDK | `cdk:create` |
+| `PATCH /api/v1/cdks/{name}` | 修改 CDK | `cdk:update` |
+| `DELETE /api/v1/cdks/{name}` | 删除 CDK | `cdk:delete` |
+| `POST /api/v1/cdks/{name}/verify` | 验证 CDK | `cdk:verify` |
+| `POST /api/v1/cdks/{name}/redeem` | 为在线玩家兑换 CDK | `cdk:redeem` |
+| `GET /api/v1/logs` | 查询兑换日志 | `log:read` |
+| `POST /api/v1/admin/reload` | 重载插件配置并重启 API | `admin:reload` |
+
+安全建议：保持 `host: "127.0.0.1"`，使用 Nginx/Caddy 反代 HTTPS 对外提供访问，并务必修改默认 token。
 
 ## 插件截图
 ![插件截图](https://github.com/user-attachments/assets/83408843-b970-4474-8637-5865eaba800d)

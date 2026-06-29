@@ -47,7 +47,7 @@ public class LogManager {
     /**
      * 保存日志文件
      */
-    public void saveLog() {
+    public synchronized void saveLog() {
         try {
             logConfig.save(logFile);
         } catch (IOException e) {
@@ -62,7 +62,7 @@ public class LogManager {
      * @param playerName 玩家名称
      * @param cdk 使用的CDK
      */
-    public void logCDKUsage(String playerName, CDK cdk) {
+    public synchronized void logCDKUsage(String playerName, CDK cdk) {
         String path = playerName + ".used";
         List<String> usedCDKs = logConfig.getStringList(path);
 
@@ -82,9 +82,17 @@ public class LogManager {
      * @param playerName 玩家名称
      * @return 玩家使用的CDK列表
      */
-    public List<String> getPlayerUsedCDKs(String playerName) {
+    public synchronized List<String> getPlayerUsedCDKs(String playerName) {
         String path = playerName + ".used";
         return logConfig.getStringList(path);
+    }
+
+    public synchronized java.util.Map<String, java.util.List<String>> getAllPlayerLogs() {
+        java.util.Map<String, java.util.List<String>> result = new java.util.LinkedHashMap<>();
+        for (String playerName : logConfig.getKeys(false)) {
+            result.put(playerName, logConfig.getStringList(playerName + ".used"));
+        }
+        return result;
     }
 
     /**

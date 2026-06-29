@@ -90,6 +90,8 @@ public class DatabaseManager {
                         "quantity INTEGER NOT NULL, " +
                         "single_use BOOLEAN NOT NULL, " +
                         "commands TEXT NOT NULL, " +
+                        "required_permission VARCHAR(255), " +
+                        "required_group VARCHAR(128), " +
                         "expiration_date VARCHAR(64), " +
                         "PRIMARY KEY (name)" +
                         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
@@ -107,6 +109,8 @@ public class DatabaseManager {
                         "quantity INTEGER NOT NULL, " +
                         "single_use BOOLEAN NOT NULL, " +
                         "commands TEXT NOT NULL, " +
+                        "required_permission TEXT, " +
+                        "required_group TEXT, " +
                         "expiration_date TEXT" +
                         ");";
                 
@@ -121,9 +125,35 @@ public class DatabaseManager {
                 statement.execute(createCDKTableSQL);
                 statement.execute(createRedeemedPlayersTableSQL);
             }
+            addColumnIfMissing(tablePrefix + "cdk", "required_permission", "mysql".equalsIgnoreCase(storageMode) ? "VARCHAR(255)" : "TEXT");
+            addColumnIfMissing(tablePrefix + "cdk", "required_group", "mysql".equalsIgnoreCase(storageMode) ? "VARCHAR(128)" : "TEXT");
         } catch (SQLException e) {
             plugin.getLogger().severe("创建数据库表时出错: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * 为旧版本数据库补齐新字段。
+     */
+    private void addColumnIfMissing(String tableName, String columnName, String columnType) {
+        try (Statement statement = connection.createStatement();
+             ResultSet rs = statement.executeQuery("SELECT * FROM " + tableName + " WHERE 1=0")) {
+            ResultSetMetaData metaData = rs.getMetaData();
+            for (int i = 1; i <= metaData.getColumnCount(); i++) {
+                if (columnName.equalsIgnoreCase(metaData.getColumnName(i))) {
+                    return;
+                }
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().warning("检查数据库字段 " + columnName + " 时出错: " + e.getMessage());
+            return;
+        }
+
+        try (Statement statement = connection.createStatement()) {
+            statement.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnType);
+        } catch (SQLException e) {
+            plugin.getLogger().warning("添加数据库字段 " + columnName + " 时出错: " + e.getMessage());
         }
     }
 
@@ -150,6 +180,8 @@ public class DatabaseManager {
                     int quantity = rs.getInt("quantity");
                     boolean isSingleUse = rs.getBoolean("single_use");
                     String commands = rs.getString("commands");
+                    String requiredPermission = rs.getString("required_permission");
+                    String requiredGroup = rs.getString("required_group");
                     String expirationStr = rs.getString("expiration_date");
                     
                     java.util.Date expirationDate = null;
@@ -161,7 +193,7 @@ public class DatabaseManager {
                         }
                     }
                     
-                    CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate);
+                    CDK cdk = new CDK(id, name, quantity, isSingleUse, commands, expirationDate, requiredPermission, requiredGroup);
                     cdkMap.computeIfAbsent(id, k -> new HashMap<>()).put(name, cdk);
                 }
             }
@@ -260,10 +292,10 @@ public class DatabaseManager {
             // 5. 更新或插入CDK
             String upsertCDKSQL;
             if (isMysql) {
-                upsertCDKSQL = "INSERT INTO " + tablePrefix + "cdk (id, name, quantity, single_use, commands, expiration_date) VALUES (?, ?, ?, ?, ?, ?) " +
-                        "ON DUPLICATE KEY UPDATE quantity=VALUES(quantity), single_use=VALUES(single_use), commands=VALUES(commands), expiration_date=VALUES(expiration_date)";
+                upsertCDKSQL = "INSERT INTO " + tablePrefix + "cdk (id, name, quantity, single_use, commands, required_permission, required_group, expiration_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?) " +
+                        "ON DUPLICATE KEY UPDATE quantity=VALUES(quantity), single_use=VALUES(single_use), commands=VALUES(commands), required_permission=VALUES(required_permission), required_group=VALUES(required_group), expiration_date=VALUES(expiration_date)";
             } else {
-                upsertCDKSQL = "INSERT OR REPLACE INTO " + tablePrefix + "cdk (id, name, quantity, single_use, commands, expiration_date) VALUES (?, ?, ?, ?, ?, ?)";
+                upsertCDKSQL = "INSERT OR REPLACE INTO " + tablePrefix + "cdk (id, name, quantity, single_use, commands, required_permission, required_group, expiration_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
             }
 
             // 对于 redeemed_players，简单起见，先删除该CDK的记录再插入新的
@@ -282,7 +314,9 @@ public class DatabaseManager {
                         cdkStatement.setInt(3, cdk.getQuantity());
                         cdkStatement.setBoolean(4, cdk.isSingleUse());
                         cdkStatement.setString(5, cdk.getCommands());
-                        cdkStatement.setString(6, cdk.getExpirationDate() != null ? dateFormat.format(cdk.getExpirationDate()) : null);
+                        cdkStatement.setString(6, cdk.getRequiredPermission());
+                        cdkStatement.setString(7, cdk.getRequiredGroup());
+                        cdkStatement.setString(8, cdk.getExpirationDate() != null ? dateFormat.format(cdk.getExpirationDate()) : null);
                         cdkStatement.executeUpdate();
                         
                         // 更新玩家列表
@@ -319,6 +353,7 @@ public class DatabaseManager {
                 plugin.getLogger().severe("回滚事务时出错: " + rollbackEx.getMessage());
                 rollbackEx.printStackTrace();
             }
+            throw new RuntimeException("保存CDK到数据库时出错", e);
         }
     }
 

@@ -5,8 +5,11 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.PrepareAnvilEvent;
+import org.bukkit.event.inventory.InventoryAction;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.inventory.ItemStack;
@@ -352,6 +355,14 @@ public class AnvilGUIManager implements Listener {
             if (!(event.getWhoClicked() instanceof Player)) return;
             Player player = (Player) event.getWhoClicked();
             if (!fallbackPlayers.contains(player.getUniqueId())) return;
+            if (event.getRawSlot() >= 0 && event.getRawSlot() < event.getView().getTopInventory().getSize() && event.getRawSlot() != 2) {
+                event.setCancelled(true);
+                return;
+            }
+            if (event.getRawSlot() >= event.getView().getTopInventory().getSize() && event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
+                event.setCancelled(true);
+                return;
+            }
             // 输出槽位索引为 2
             if (event.getRawSlot() == 2) {
                 event.setCancelled(true);
@@ -376,6 +387,51 @@ public class AnvilGUIManager implements Listener {
                 fallbackPlayers.remove(player.getUniqueId());
                 lastRenameText.remove(player.getUniqueId());
                 player.closeInventory();
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onManagedAnvilItemClick(InventoryClickEvent event) {
+        try {
+            if (event.getView() == null || event.getView().getTopInventory() == null) return;
+            if (event.getView().getTopInventory().getType() != InventoryType.ANVIL) return;
+            if (!(event.getWhoClicked() instanceof Player)) return;
+            Player player = (Player) event.getWhoClicked();
+            if (!isManagedAnvil(player)) return;
+
+            int topSize = event.getView().getTopInventory().getSize();
+            int rawSlot = event.getRawSlot();
+            boolean clickedTopInventory = rawSlot >= 0 && rawSlot < topSize;
+
+            // 1.21+ 中输入槽物品可能被取出；本插件 GUI 的非输出槽始终只是展示/输入载体。
+            if (clickedTopInventory && rawSlot != 2) {
+                event.setCancelled(true);
+                return;
+            }
+
+            // 阻止玩家通过 Shift 点击背包物品灌入铁砧 GUI。
+            if (!clickedTopInventory && event.getAction() == InventoryAction.MOVE_TO_OTHER_INVENTORY) {
+                event.setCancelled(true);
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
+    public void onManagedAnvilDrag(InventoryDragEvent event) {
+        try {
+            if (event.getView() == null || event.getView().getTopInventory() == null) return;
+            if (event.getView().getTopInventory().getType() != InventoryType.ANVIL) return;
+            if (!(event.getWhoClicked() instanceof Player)) return;
+            Player player = (Player) event.getWhoClicked();
+            if (!isManagedAnvil(player)) return;
+
+            int topSize = event.getView().getTopInventory().getSize();
+            for (Integer rawSlot : event.getRawSlots()) {
+                if (rawSlot != null && rawSlot >= 0 && rawSlot < topSize) {
+                    event.setCancelled(true);
+                    return;
+                }
             }
         } catch (Throwable ignored) {}
     }
@@ -408,6 +464,11 @@ public class AnvilGUIManager implements Listener {
     }
 
     // 使用 AnvilGUI 库后，不再需要拦截原版铁砧事件，避免冲突
+
+    private boolean isManagedAnvil(Player player) {
+        UUID uuid = player.getUniqueId();
+        return activePlayers.contains(uuid) || fallbackPlayers.contains(uuid);
+    }
 
     private void useCDK(Player player, String cdkName) {
         // 构造类似 /cdk use <code> 的调用路径

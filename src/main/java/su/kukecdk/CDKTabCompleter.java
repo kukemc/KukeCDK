@@ -172,6 +172,12 @@ public class CDKTabCompleter implements TabCompleter {
             case 5:
                 // 第四个参数：有效时间（可选）
                 completions.add("[有效时间 yyyy-MM-dd HH:mm]");
+                completions.add("--permission");
+                completions.add("--group");
+                break;
+            case 6:
+            case 7:
+                handleCreateOptionCompletion(args, completions);
                 break;
         }
     }
@@ -206,7 +212,25 @@ public class CDKTabCompleter implements TabCompleter {
             case 6:
                 // 第五个参数：有效时间（可选）
                 completions.add("[有效时间 yyyy-MM-dd HH:mm]");
+                completions.add("--permission");
+                completions.add("--group");
                 break;
+            case 7:
+            case 8:
+                handleCreateOptionCompletion(args, completions);
+                break;
+        }
+    }
+
+    private void handleCreateOptionCompletion(String[] args, List<String> completions) {
+        String previous = args.length >= 2 ? args[args.length - 2].toLowerCase() : "";
+        if ("--permission".equals(previous)) {
+            completions.add("<permission>");
+        } else if ("--group".equals(previous)) {
+            completions.add("<group>");
+        } else {
+            completions.add("--permission");
+            completions.add("--group");
         }
     }
 

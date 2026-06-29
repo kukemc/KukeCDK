@@ -9,6 +9,7 @@ import su.kukecdk.manager.LanguageManager;
 import su.kukecdk.manager.LogManager;
 import su.kukecdk.manager.FailedAttemptsManager;
 import su.kukecdk.model.CDK;
+import su.kukecdk.util.FoliaSupport;
 // import com.tcoded.folialib.FoliaLib;  // 暂时注释，网络问题
 
 import java.io.File;
@@ -98,7 +99,7 @@ public class CDKCommandHandler {
 
         StringBuilder commandBuilder = new StringBuilder();
         boolean inQuotes = false;
-        String expirationDateString = null;
+        int commandEndIndex = -1;
 
         for (int i = (type.equals("single") ? 4 : 5); i < args.length; i++) { // 从正确的位置开始构建命令
             if (args[i].startsWith("\"") && !inQuotes) {
@@ -107,10 +108,7 @@ public class CDKCommandHandler {
             } else if (args[i].endsWith("\"") && inQuotes) {
                 inQuotes = false;
                 commandBuilder.append(args[i], 0, args[i].length() - 1);
-                // 只在命令提取完成后检查有效时间
-                if (i + 1 < args.length) {
-                    expirationDateString = args[i + 1] + " " + args[i + 2]; // 加上下一项作为时间
-                }
+                commandEndIndex = i;
                 break;
             } else if (inQuotes) {
                 commandBuilder.append(args[i]).append(" ");
@@ -122,6 +120,7 @@ public class CDKCommandHandler {
             for (int i = (type.equals("single") ? 4 : 5); i < args.length; i++) {
                 commandBuilder.append(args[i]).append(" ");
             }
+            commandEndIndex = args.length - 1;
         }
 
         String commands = commandBuilder.toString().trim();
@@ -131,10 +130,12 @@ public class CDKCommandHandler {
             return true;
         }
 
+        CreateOptions createOptions = parseCreateOptions(args, commandEndIndex + 1);
+
         // 处理有效时间
         Date expirationDate = null;
-        if (expirationDateString != null) {
-            expirationDate = parseDate(expirationDateString);
+        if (createOptions.expirationDateString != null) {
+            expirationDate = parseDate(createOptions.expirationDateString);
             if (expirationDate == null) {
                 sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("invalid_expiration"));
                 return true;
@@ -145,13 +146,28 @@ public class CDKCommandHandler {
         if (type.equals("single")) {
             for (int i = 0; i < quantity; i++) {
                 String cdkName = cdkManager.generateUniqueRandomCDKName();
-                cdkManager.createCDK(id, cdkName, 1, true, commands, expirationDate);
+                try {
+                    cdkManager.createCDK(id, cdkName, 1, true, commands, expirationDate, createOptions.requiredPermission, createOptions.requiredGroup);
+                } catch (IllegalArgumentException e) {
+                    i--; // 发生极其罕见的碰撞时重试
+                }
             }
             sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("create_success_single", "%quantity%", String.valueOf(quantity), "%id%", id));
         } else if (type.equals("multiple")) {
             String cdkName = name.equalsIgnoreCase("random") ? cdkManager.generateUniqueRandomCDKName() : name;
-            cdkManager.createCDK(id, cdkName, quantity, false, commands, expirationDate);
-            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("create_success_multiple", "%cdk%", cdkName, "%quantity%", String.valueOf(quantity), "%id%", id));
+            try {
+                cdkManager.createCDK(id, cdkName, quantity, false, commands, expirationDate, createOptions.requiredPermission, createOptions.requiredGroup);
+                sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("create_success_multiple", "%cdk%", cdkName, "%quantity%", String.valueOf(quantity), "%id%", id));
+            } catch (IllegalArgumentException e) {
+                if (!name.equalsIgnoreCase("random")) {
+                    sendMessageToSender(sender, languageManager.getMessage("prefix") + "§cCDK 名称已存在，请使用其他名称！");
+                } else {
+                    // 如果是 random 发生冲突，再试一次
+                    String fallback = cdkManager.generateUniqueRandomCDKName();
+                    cdkManager.createCDK(id, fallback, quantity, false, commands, expirationDate, createOptions.requiredPermission, createOptions.requiredGroup);
+                    sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("create_success_multiple", "%cdk%", fallback, "%quantity%", String.valueOf(quantity), "%id%", id));
+                }
+            }
         } else {
             sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("invalid_cdk_type"));
             return true;
@@ -196,7 +212,11 @@ public class CDKCommandHandler {
             // 如果是一次性CDK，批量生成新的CDK
             for (int i = 0; i < quantity; i++) {
                 String newCdkName = cdkManager.generateUniqueRandomCDKName();
-                cdkManager.createCDK(id, newCdkName, 1, true, cdk.getCommands(), cdk.getExpirationDate());
+                try {
+                    cdkManager.createCDK(id, newCdkName, 1, true, cdk.getCommands(), cdk.getExpirationDate(), cdk.getRequiredPermission(), cdk.getRequiredGroup());
+                } catch (IllegalArgumentException e) {
+                    i--; // 发生极其罕见的碰撞时重试
+                }
             }
         } else {
             // 如果是多次使用的CDK，直接增加数量
@@ -273,11 +293,20 @@ public class CDKCommandHandler {
             return true;
         }
 
+        if (!canPlayerUseCDK(player, usedCDK)) {
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("cdk_condition_not_met"));
+            sendConditionMessages(player, usedCDK);
+            return true;
+        }
+
         // 执行命令，支持PAPI占位符，并保留内置%player%占位符
         String[] commands = usedCDK.getCommands().split("\\|");
         for (String command : commands) {
             String parsedCommand = applyPlaceholders(player, command);
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), parsedCommand);
+            // 确保在主线程（Folia中为Global Region）执行控制台命令
+            FoliaSupport.runGlobal(cdkManager.getPlugin(), () -> {
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), parsedCommand);
+            });
         }
 
         // 更新 CDK 使用信息
@@ -357,6 +386,10 @@ public class CDKCommandHandler {
         player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("verify_success", "%cdk%", cdkName));
         player.sendMessage(languageManager.getMessage("prefix") + expiryInfo);
         player.sendMessage(languageManager.getMessage("prefix") + quantityInfo);
+        if (cdk.hasUseConditions()) {
+            player.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage(canPlayerUseCDK(player, cdk) ? "verify_condition_met" : "verify_condition_not_met"));
+            sendConditionMessages(player, cdk);
+        }
         
         return true;
     }
@@ -478,6 +511,9 @@ public class CDKCommandHandler {
                     "%id%", cdk.getId(), 
                     "%commands%", cdk.getCommands(),
                     "%expiration%", expiration));
+                if (cdk.hasUseConditions()) {
+                    sendMessageToSender(sender, languageManager.getMessage("list_condition", "%conditions%", formatConditions(cdk)));
+                }
             }
         }
         
@@ -586,6 +622,64 @@ public class CDKCommandHandler {
         } catch (ParseException e) {
             return null; // 返回 null 表示解析失败
         }
+    }
+
+    private CreateOptions parseCreateOptions(String[] args, int startIndex) {
+        CreateOptions options = new CreateOptions();
+        List<String> expirationParts = new ArrayList<>();
+        for (int i = startIndex; i < args.length; i++) {
+            String arg = args[i];
+            if ("--permission".equalsIgnoreCase(arg)) {
+                if (i + 1 < args.length) {
+                    options.requiredPermission = args[++i];
+                }
+            } else if ("--group".equalsIgnoreCase(arg)) {
+                if (i + 1 < args.length) {
+                    options.requiredGroup = args[++i];
+                }
+            } else {
+                expirationParts.add(arg);
+            }
+        }
+        if (expirationParts.size() >= 2) {
+            options.expirationDateString = expirationParts.get(0) + " " + expirationParts.get(1);
+        }
+        return options;
+    }
+
+    private boolean canPlayerUseCDK(Player player, CDK cdk) {
+        String requiredPermission = cdk.getRequiredPermission();
+        if (requiredPermission != null && !player.hasPermission(requiredPermission)) {
+            return false;
+        }
+        String requiredGroup = cdk.getRequiredGroup();
+        return requiredGroup == null || player.hasPermission("group." + requiredGroup);
+    }
+
+    private void sendConditionMessages(CommandSender sender, CDK cdk) {
+        if (cdk.getRequiredPermission() != null) {
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("cdk_required_permission", "%permission%", cdk.getRequiredPermission()));
+        }
+        if (cdk.getRequiredGroup() != null) {
+            sendMessageToSender(sender, languageManager.getMessage("prefix") + languageManager.getMessage("cdk_required_group", "%group%", cdk.getRequiredGroup()));
+        }
+    }
+
+    private String formatConditions(CDK cdk) {
+        List<String> conditions = new ArrayList<>();
+        if (cdk.getRequiredPermission() != null) {
+            conditions.add(languageManager.getMessage("condition_permission", "%permission%", cdk.getRequiredPermission()));
+        }
+        if (cdk.getRequiredGroup() != null) {
+            conditions.add(languageManager.getMessage("condition_group", "%group%", cdk.getRequiredGroup()));
+        }
+        return String.join(", ", conditions);
+    }
+
+    private static class CreateOptions {
+        private String expirationDateString;
+        private String requiredPermission;
+        private String requiredGroup;
     }
 
     /**

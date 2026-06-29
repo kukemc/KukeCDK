@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'su'
-version = 'v1.9'
+version = 'v2.0'
 
 repositories {
     maven { 
@@ -44,6 +44,10 @@ repositories {
         name = "codemc-snapshots"
         url = "https://repo.codemc.io/repository/maven-snapshots/"
     }
+    maven {
+        name = "mvn-wesjd-net"
+        url = "https://mvn.wesjd.net/"
+    }
     // FoliaLib 官方仓库 (已迁移到 NexoMC)
     maven {
         name = "nexomc-releases"
@@ -59,7 +63,8 @@ dependencies {
     compileOnly "org.spigotmc:spigot-api:1.12.2-R0.1-SNAPSHOT"
     implementation 'org.xerial:sqlite-jdbc:3.34.0'
     implementation 'mysql:mysql-connector-java:8.0.28'
-    runtimeOnly 'net.wesjd:anvilgui:1.10.10-SNAPSHOT'
+    implementation 'com.google.code.gson:gson:2.10.1'
+    runtimeOnly 'net.wesjd:anvilgui:1.10.13-SNAPSHOT'
 }
 
 // =============== Shadow 打包（重定位 AnvilGUI） ===============
@@ -68,6 +73,9 @@ shadowJar {
     archiveClassifier.set('')
     dependencies {
         include(dependency('net.wesjd:anvilgui'))
+        include(dependency('com.google.code.gson:gson'))
+        include(dependency('org.xerial:sqlite-jdbc'))
+        include(dependency('mysql:mysql-connector-java'))
     }
 }
 

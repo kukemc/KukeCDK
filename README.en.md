@@ -15,6 +15,7 @@
 - Folia-compatible
 - YAML, MySQL, and SQLite storage
 - Anvil GUI input for CDK (`/cdk anvil`)
+- Optional HTTP API server with built-in detailed documentation page
 
 ## Commands & Permissions
 | Command | Description | Permission |
@@ -89,6 +90,58 @@ anvil_gui:
   input_item_lore:
     - "&7Enter your CDK above"
 ```
+
+## HTTP API Server
+
+KukeCDK includes an optional HTTP API server. It is disabled by default. After enabling it, you can manage, query, verify, and redeem CDKs through REST endpoints. A detailed documentation page is served by the plugin itself.
+
+Default docs URL:
+
+```text
+http://127.0.0.1:8765/docs
+```
+
+Basic config:
+
+```yaml
+api:
+  enabled: false
+  host: "127.0.0.1"
+  port: 8765
+  base_path: "/api/v1"
+  docs_path: "/docs"
+  auth:
+    enabled: true
+    tokens:
+      - name: "admin"
+        token: "change-me-admin-token"
+        scopes:
+          - "*"
+```
+
+Authentication:
+
+```http
+Authorization: Bearer change-me-admin-token
+```
+
+Common endpoints:
+
+| Endpoint | Description | Scope |
+| --- | --- | --- |
+| `GET /api/v1/health` | Health check | `server:read` |
+| `GET /api/v1/stats` | CDK statistics | `server:read` |
+| `GET /api/v1/cdks` | List CDKs | `cdk:read` |
+| `GET /api/v1/cdks/{name}` | Get a CDK | `cdk:read` |
+| `POST /api/v1/cdks` | Create CDKs | `cdk:create` |
+| `PATCH /api/v1/cdks/{name}` | Update a CDK | `cdk:update` |
+| `DELETE /api/v1/cdks/{name}` | Delete a CDK | `cdk:delete` |
+| `POST /api/v1/cdks/{name}/verify` | Verify a CDK | `cdk:verify` |
+| `POST /api/v1/cdks/{name}/redeem` | Redeem for an online player | `cdk:redeem` |
+| `GET /api/v1/logs` | Query redemption logs | `log:read` |
+| `POST /api/v1/admin/reload` | Reload config and restart API | `admin:reload` |
+
+Security recommendation: keep `host: "127.0.0.1"`, expose it through an HTTPS reverse proxy such as Nginx/Caddy if needed, and always replace the default token.
 
 ## plugin screenshot
 ![plugin screenshot](https://github.com/user-attachments/assets/83408843-b970-4474-8637-5865eaba800d)

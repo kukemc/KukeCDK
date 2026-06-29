@@ -6,6 +6,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import su.kukecdk.command.CDKCommandHandler;
+import su.kukecdk.api.ApiServerManager;
 import su.kukecdk.manager.CDKManager;
 import su.kukecdk.manager.ConfigManager;
 import su.kukecdk.manager.LanguageManager;
@@ -34,6 +35,7 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
     private CDKCommandHandler commandHandler;
     private AnvilGUIManager anvilGUIManager;
     private UpdateService updateService;
+    private ApiServerManager apiServerManager;
     // private FoliaLib foliaLib;  // 暂时注释，网络问题
     private Object expiredCDKsTaskHandle;
 
@@ -67,6 +69,8 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         // 启动更新检查并注册加入服务器提醒
         updateService = new UpdateService(this);
         updateService.init();
+        apiServerManager = new ApiServerManager(this, configManager, cdkManager, logManager, this::reloadFromApi);
+        apiServerManager.startIfEnabled();
 
         // 注册命令和Tab补全
         getCommand("cdk").setExecutor(this);
@@ -123,6 +127,9 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         if (failedAttemptsManager != null) {
             failedAttemptsManager.saveConfig();
         }
+        if (apiServerManager != null) {
+            apiServerManager.stop();
+        }
         // 取消周期任务
         try { FoliaSupport.cancel(expiredCDKsTaskHandle); } catch (Throwable ignored) {}
         getLogger().info("KukeCDK 已卸载");
@@ -178,7 +185,11 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
             case "list":
                 return commandHandler.handleListCommand(sender, args);
             case "reload":
-                return commandHandler.handleReloadCommand(sender);
+                boolean reloaded = commandHandler.handleReloadCommand(sender);
+                if (apiServerManager != null) {
+                    apiServerManager.restart();
+                }
+                return reloaded;
             case "export":
                 return commandHandler.handleExportCommand(sender);
             case "use":
@@ -316,5 +327,14 @@ public final class KukeCDK extends JavaPlugin implements CommandExecutor {
         
         sender.sendMessage(languageManager.getMessage("prefix") + languageManager.getMessage("migrate_wrong_mode"));
         return -1;
+    }
+
+    private void reloadFromApi() {
+        configManager.reloadConfig();
+        cdkManager.updateConfig(configManager.getConfig());
+        cdkManager.loadCDKs();
+        if (apiServerManager != null) {
+            apiServerManager.restart();
+        }
     }
 }
