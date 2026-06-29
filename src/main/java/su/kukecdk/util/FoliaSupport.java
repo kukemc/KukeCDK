@@ -35,6 +35,11 @@ public final class FoliaSupport {
         return Bukkit.getScheduler().runTaskTimer(plugin, runnable, initialDelayTicks, periodTicks);
     }
 
+    /** 在非 Folia 上运行 Bukkit 延迟任务（返回 BukkitTask 句柄） */
+    public static Object runBukkitLater(JavaPlugin plugin, Runnable runnable, long delayTicks) {
+        return Bukkit.getScheduler().runTaskLater(plugin, runnable, delayTicks);
+    }
+
     /**
      * 在 Folia 的全局区域调度器上周期运行（返回 Folia ScheduledTask 句柄），否则退回 BukkitTimer。
      */
@@ -183,6 +188,46 @@ public final class FoliaSupport {
             return runAtFixedRate.invoke(entityScheduler, plugin, consumer, initialDelayTicks, periodTicks);
         } catch (Throwable t) {
             return runBukkitTimer(plugin, runnable, initialDelayTicks, periodTicks);
+        }
+    }
+
+    /**
+     * 在 Folia 的玩家实体调度器上延迟运行一次，否则退回 BukkitScheduler。
+     */
+    public static Object runEntityLater(JavaPlugin plugin, Player player, Runnable runnable, long delayTicks) {
+        if (!isFolia()) {
+            return runBukkitLater(plugin, runnable, delayTicks);
+        }
+        try {
+            Method getScheduler = player.getClass().getMethod("getScheduler");
+            Object entityScheduler = getScheduler.invoke(player);
+            Method runDelayed = null;
+            for (Method m : entityScheduler.getClass().getMethods()) {
+                if (m.getName().equals("runDelayed")) {
+                    Class<?>[] p = m.getParameterTypes();
+                    if (p.length == 4 && org.bukkit.plugin.Plugin.class.isAssignableFrom(p[0]) && p[1].getName().contains("Consumer") && p[3] == long.class) {
+                        runDelayed = m;
+                        break;
+                    }
+                }
+            }
+            if (runDelayed == null) {
+                return runBukkitLater(plugin, runnable, delayTicks);
+            }
+            Class<?> consumerClass = runDelayed.getParameterTypes()[1];
+            Object consumer = Proxy.newProxyInstance(
+                    consumerClass.getClassLoader(),
+                    new Class<?>[]{consumerClass},
+                    (proxy, method, args) -> {
+                        if ("accept".equals(method.getName())) {
+                            runnable.run();
+                        }
+                        return null;
+                    }
+            );
+            return runDelayed.invoke(entityScheduler, plugin, consumer, null, delayTicks);
+        } catch (Throwable t) {
+            return runBukkitLater(plugin, runnable, delayTicks);
         }
     }
 

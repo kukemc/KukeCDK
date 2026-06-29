@@ -230,7 +230,7 @@ public class AnvilGUIManager implements Listener {
                             if (slot == 2) {
                                 Player p = (Player) stateSnapshotCls.getMethod("getPlayer").invoke(snapshot);
                                 try { activePlayers.remove(p.getUniqueId()); lastRenameText.remove(p.getUniqueId()); stopOverwriteTask(p); } catch (Throwable ignored) {}
-                                useCDK(p, cdkText);
+                                runWithoutAnvilExperienceCost(p, () -> useCDK(p, cdkText));
                                 actions.add(closeAction.invoke(null));
                             }
                             return actions.isEmpty() ? java.util.Collections.emptyList() : actions;
@@ -266,7 +266,7 @@ public class AnvilGUIManager implements Listener {
                         }
                         activePlayers.remove(p.getUniqueId());
                         lastRenameText.remove(p.getUniqueId());
-                        useCDK(p, cdkText);
+                        runWithoutAnvilExperienceCost(p, () -> useCDK(p, cdkText));
                         try { return closeResp.invoke(null); } catch (Throwable ignore) {}
                         return null;
                     };
@@ -383,7 +383,8 @@ public class AnvilGUIManager implements Listener {
                     player.closeInventory();
                     return;
                 }
-                useCDK(player, input);
+                final String finalInput = input;
+                runWithoutAnvilExperienceCost(player, () -> useCDK(player, finalInput));
                 fallbackPlayers.remove(player.getUniqueId());
                 lastRenameText.remove(player.getUniqueId());
                 player.closeInventory();
@@ -403,6 +404,13 @@ public class AnvilGUIManager implements Listener {
             int topSize = event.getView().getTopInventory().getSize();
             int rawSlot = event.getRawSlot();
             boolean clickedTopInventory = rawSlot >= 0 && rawSlot < topSize;
+
+            // 本插件的输出槽是确认按钮，不应触发原版铁砧交易或消耗经验。
+            if (clickedTopInventory && rawSlot == 2) {
+                event.setCancelled(true);
+                restoreExperienceNextTick(player, new ExperienceSnapshot(player));
+                return;
+            }
 
             // 1.21+ 中输入槽物品可能被取出；本插件 GUI 的非输出槽始终只是展示/输入载体。
             if (clickedTopInventory && rawSlot != 2) {
@@ -474,6 +482,50 @@ public class AnvilGUIManager implements Listener {
         // 构造类似 /cdk use <code> 的调用路径
         String[] args = new String[] {"use", cdkName};
         commandHandler.handleUseCommand(player, args);
+    }
+
+    private void runWithoutAnvilExperienceCost(Player player, Runnable action) {
+        ExperienceSnapshot snapshot = new ExperienceSnapshot(player);
+        try {
+            action.run();
+        } finally {
+            restoreExperienceNextTick(player, snapshot);
+        }
+    }
+
+    private void restoreExperienceNextTick(Player player, ExperienceSnapshot snapshot) {
+        if (player == null || snapshot == null) return;
+        Runnable restore = () -> {
+            try {
+                if (!player.isOnline()) return;
+                snapshot.restore(player);
+            } catch (Throwable ignored) {}
+        };
+        try {
+            if (FoliaSupport.isFolia()) {
+                FoliaSupport.runEntityLater(plugin, player, restore, 1L);
+            } else {
+                FoliaSupport.runBukkitLater(plugin, restore, 1L);
+            }
+        } catch (Throwable ignored) {}
+    }
+
+    private static class ExperienceSnapshot {
+        private final int level;
+        private final float exp;
+        private final int totalExperience;
+
+        private ExperienceSnapshot(Player player) {
+            this.level = player.getLevel();
+            this.exp = player.getExp();
+            this.totalExperience = player.getTotalExperience();
+        }
+
+        private void restore(Player player) {
+            player.setLevel(level);
+            player.setExp(exp);
+            player.setTotalExperience(totalExperience);
+        }
     }
 
     private String parsePlaceholders(Player player, String text) {
